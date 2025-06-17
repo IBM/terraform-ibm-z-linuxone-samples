@@ -15,11 +15,15 @@ Ansible is used to configure the provisioned infrastructure. It connects to the 
 - You use an Ansible playbook (change_ibmuser_password.yml) to change the ibmuser password on the z/OS instance.
 - The playbook is triggered automatically after provisioning by using Terraform’s `local-exec` provisioner.
 
+## Prequisites
+- [IBM z/OS core collection](https://galaxy.ansible.com/ui/repo/published/ibm/ibm_zos_core/)
+- IBM Terraform Self-Managed for Z and LinuxONE
+ 
 ## Playbooks
-- [***configure_instance***](playbook/configure_instance.yml): change the `ibmuser` user password
+- [***configure_instance***](playbook/configure_instance.yml): change `ibmuser` user password using `zos_tso_command` module
 
 ## Terraform configuration files
-- [***backend.tf***](terraform/backend.tf): remote backend for state file
+- [***backend.tf***](terraform/backend.tf): remote backend configuration for state file
 - [***main.tf***](terraform/backend.tf): main configuration file
 - [***terraform.tfvars***](terraform/terraform.tfvars): variable values to be used 
 - [***variables.tf***](terraform/variables.tf): variables definition
@@ -28,6 +32,6 @@ Ansible is used to configure the provisioned infrastructure. It connects to the 
 ## Execution
 From the termninal, navigate to the `terraform` directory and run the following commands:
 - `terraform init` to initialize Terraform
-- `terraform plan` to check for Terroform errors
+- `terraform plan` to check for Terraform errors
 - `terraform apply` to provision an zos instance
-- `terraform destroy` to de-provision the zos instance
+- `terraform destroy` to de-provision an zos instance

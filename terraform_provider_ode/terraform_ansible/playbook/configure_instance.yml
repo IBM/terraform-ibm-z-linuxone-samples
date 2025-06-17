@@ -1,0 +1,12 @@
+- name: Connect to z/OS VM and check instance information
+  hosts: all
+  gather_facts: false
+  environment: "{{ environment_vars }}"
+  ignore_unreachable: yes
+
+  tasks:
+    - name: change IBMUSER pwd
+      ibm.ibm_zos_core.zos_tso_command:
+        commands: 
+          - ALTUSER IBMUSER PHRASE('some_password') NOEXPIRE RESUME
+      register: tso_cmd_output

@@ -12,17 +12,17 @@ You can use this sample to implement GitOps, Terraform, Ansible Automation Platf
 - Event-Driven Ansible (EDA) listens for events (for example, webhook triggers, alerts, or Git changes) and automatically triggers Ansible playbooks in response.
 
 ## Prerequisites:
-    - Terraform Enterprise server
-    - Ansible Automation Plaform 2.5 (AAP) with Event-Driven Ansible (EDA)
-    - Github or Github Enterprise
-    - Knowledge of how to use Terraform, Ansible (including Ansible Automation Plaform and EDA), and Github
+  - IBM Terraform Self-Managed for Z and LinuxONE
+  - Ansible Automation Plaform 2.5 (AAP) with Event-Driven Ansible (EDA)
+  - Github or Github Enterprise
+  - Experience with Terraform, Ansible (including Ansible Automation Plaform and EDA), and Github
   
 ## Sample Code
-- [AAP](AAP): sample code for code to use with AAP configuration
-- [execuation_environments](execution_environments): sample code to build a suitable execution environment to use with this use case
-- [playbook](playbook): sample playbooks and Terraform variables file
-- [rulebook](rulebooks): sample rulebook to use with EDA
-- [terraform](terraform): sample Terraform configuration files
+- [AAP](AAP/): sample code for code to use with AAP configuration
+- [execution_environments](execution_environments/*): sample code to build a suitable execution environment to use with this use case
+- [playbook](playbook/): sample playbooks and Terraform variables file
+- [rulebook](rulebooks/): sample rulebook to use with EDA
+- [terraform](terraform/): sample Terraform configuration files
 
 ## Terraform Enterprise Configuration
 1. Create an API token (or reuse an exisitng one)
