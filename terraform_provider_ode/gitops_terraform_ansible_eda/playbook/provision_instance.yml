@@ -1,0 +1,40 @@
+---
+- name: Provision/Deprovision an z/OS instance
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - terraform-secrets.yml
+  vars:
+    terraform_path: "../terraform"
+    terraform_state: "present"
+    # terraform_state: "absent"
+
+    task_desc: "{{'Call Terraform to create z/OS instance' if terraform_state == 'present' else 'Call Terraform to destroy z/OS instance'}}"
+
+  tasks:
+    - name: Generate terraform.tfvars file
+      copy:
+        content: |
+          ode_host  = "{{ ode_host }}" 
+          ode_username  = "{{ ode_username }}" 
+          ode_password  = "{{ ode_password }}" # pragma: allowlist secret
+          ssh_target_user  = "{{ ssh_target_user }}"  
+          ssh_target_password  = "{{ ssh_target_password }}"  # pragma: allowlist secret
+          instance_label  = "{{ instance_label }}"
+          instance_description  = "{{ instance_description }}"
+          ssh_public_key  = "{{ ssh_public_key }}"
+          target_uuid  = "{{ target_uuid }}"
+          image_uuid  = "{{ image_uuid }}"
+          sysres_component_uuid  = "{{ sysres_component_uuid }}"
+          cp  = "{{ cp }}"
+          ram  = "{{ ram }}"
+        dest: "{{ terraform_path }}/terraform.tfvars"
+
+    - name: "{{ task_desc }}"
+      cloud.terraform.terraform:
+        project_path: "{{ terraform_path }}"
+        state: "{{ terraform_state }}"
+        force_init: true  # Force reinitialization if needed
+        # Note use of the env variable set by the Terraform backend credential to store the backend configuration file path
+        backend_config_files:
+          - "{{ lookup('ansible.builtin.env', 'TF_BACKEND_CONFIG_FILE') }}"

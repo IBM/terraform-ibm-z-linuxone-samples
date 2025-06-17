@@ -1,0 +1,18 @@
+# Use these variables for your zos host in AAP
+ansible_host: your_ode_target_hostname
+ansible_user: ibmuser
+ansible_port: 2022
+PYZ: /usr/lpp/IBM/cyp/v3r12/pyz
+ZOAU: /usr/lpp/IBM/zoautil
+ansible_python_interpreter: '{{ PYZ }}/bin/python3'
+environment_vars:
+  _BPXK_AUTOCVT: 'ON'
+  ZOAU_HOME: '{{ ZOAU }}'
+  LIBPATH: '{{ ZOAU }}/lib:{{ PYZ }}/lib:/lib:/usr/lib:.'
+  PATH: '{{ ZOAU }}/bin:{{ PYZ }}/bin:/bin:/var/bin'
+  _CEE_RUNOPTS: FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)
+  _TAG_REDIR_ERR: txt
+  _TAG_REDIR_IN: txt
+  _TAG_REDIR_OUT: txt
+  LANG: C
+  PYTHONSTDINENCODING: cp1047
