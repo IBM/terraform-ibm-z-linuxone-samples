@@ -1,4 +1,4 @@
-# Terraform for IBM Z and LinuxONE samples
+# Terraform for IBM Z and LinuxONE repository
 This repository provides samples for using Terraform for automating infrastructure tasks on IBM Z and LinuxONE mainframes.
 The samples in this repository are written using the IBM Terraform Self-Managed for Z and LinuxONE offering. For more information, refer to the [documention.](https://www.ibm.com/docs/en/terraform-z-linuxone)
 
