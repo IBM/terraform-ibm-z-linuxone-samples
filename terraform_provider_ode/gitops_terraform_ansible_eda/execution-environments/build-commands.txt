@@ -1,0 +1,4 @@
+ansible-builder build -v3 --container-runtime podman -t zoscore-terraform
+podman login quay.io
+podman tag localhost/zoscore-terraform:latest quay.io/your-id/ansiblezos-terraform:latest
+podman push quay.io/your-id/ansiblezos-terraform

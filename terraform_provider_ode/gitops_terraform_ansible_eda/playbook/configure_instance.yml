@@ -1,0 +1,30 @@
+- name: Connect to z/OS VM and check instance information
+  hosts: all
+  gather_facts: false
+  environment: "{{ environment_vars }}"
+  ignore_unreachable: yes
+
+  tasks:
+    - name: Issue command to get OS info
+      command: "uname -a"
+      register: uname_info
+      ignore_errors: true
+
+    - name: Display friendly message on failure
+      ansible.builtin.debug:
+        msg: "Could not reach host {{ inventory_hostname }}."
+      when: uname_info is not defined or ('rc' not in uname_info) or uname_info.rc != 0
+
+    - name: End playbook when no hosts available
+      meta: end_host
+      when: uname_info is not defined or ('rc' not in uname_info) or uname_info.rc != 0
+
+    - name: Show uname command output
+      ansible.builtin.debug:
+          var: uname_info.stdout
+
+    - name: change IBMUSER pwd
+      ibm.ibm_zos_core.zos_tso_command:
+        commands: 
+          - ALTUSER IBMUSER PHRASE('sys1@ansible') NOEXPIRE RESUME
+      register: tso_cmd_output

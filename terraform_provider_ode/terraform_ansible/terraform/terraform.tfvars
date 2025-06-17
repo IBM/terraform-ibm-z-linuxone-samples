@@ -1,0 +1,14 @@
+ode_host = "https://your.ode.server.com:port"
+ode_username = "your-ode-user"
+ode_password  = "your-ode-password"
+ssh_target_user = "your-target-user"
+ssh_target_password  = "your-target-passowrd"
+ssh_target_key_file = "/path/to/your/ssh/public-key"
+instance_label = "zos_instance"
+instance_description = "new test instance"
+ssh_public_key = "your-public-ssh-key"
+target_uuid = "your-target-uuid"
+image_uuid  = "your-image-uuid"
+sysres_component_uuid = "your-sysres_component-uuid"
+cp = 4
+ram = 5368709120
