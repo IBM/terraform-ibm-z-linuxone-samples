@@ -19,6 +19,7 @@ Ansible is used to configure the provisioned infrastructure. It connects to the 
 - [Ansible](https://docs.ansible.com/ansible/latest/getting_started/index.html)
 - [IBM z/OS core collection](https://galaxy.ansible.com/ui/repo/published/ibm/ibm_zos_core/)
 - IBM Terraform Self-Managed for Z and LinuxONE
+- [On-Demand Environments provider](https://registry.terraform.io/providers/IBM/ode/latest)
  
 ## Playbooks
 - [***configure_instance***](playbook/configure_instance.yml): change `ibmuser` user password using `zos_tso_command` module
