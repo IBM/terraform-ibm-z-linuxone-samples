@@ -16,6 +16,7 @@ Ansible is used to configure the provisioned infrastructure. It connects to the 
 - The playbook is triggered automatically after provisioning by using Terraform’s `local-exec` provisioner.
 
 ## Prequisites
+- [Ansible](https://docs.ansible.com/ansible/latest/getting_started/index.html)
 - [IBM z/OS core collection](https://galaxy.ansible.com/ui/repo/published/ibm/ibm_zos_core/)
 - IBM Terraform Self-Managed for Z and LinuxONE
  
