@@ -19,7 +19,7 @@ You can use this sample to implement GitOps, Terraform, Ansible Automation Platf
   
 ## Sample Code
 - [AAP](AAP/): sample code for code to use with AAP configuration
-- [execution_environments](execution_environments/*): sample code to build a suitable execution environment to use with this use case
+- [execution_environments](execution_environments/): sample code to build a suitable execution environment to use with this use case
 - [playbook](playbook/): sample playbooks and Terraform variables file
 - [rulebook](rulebooks/): sample rulebook to use with EDA
 - [terraform](terraform/): sample Terraform configuration files

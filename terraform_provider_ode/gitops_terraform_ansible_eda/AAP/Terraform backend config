@@ -1,4 +1,4 @@
-# Subtitute these variables and use them for your Terraform backend config creentials so AAP can store and retrieve Terraform state file
+# Subtitute these variables and use them for your Terraform backend config credential so AAP can store and retrieve Terraform state file
 hostname = "your.terraform.server.com" 
 organization = "your-terraform-org" 
 token = "your-terraform-server-api-token"
