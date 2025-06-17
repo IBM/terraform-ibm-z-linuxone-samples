@@ -10,5 +10,5 @@
       condition: event.payload.ref == "refs/heads/dev"  # Trigger only for commits to the main branch
       action:
         run_workflow_template:
-          name: "ode-workflow"       # Replace with your AAP job template name
+          name: "ode_workflow"       # Replace with your AAP job template name
           organization: "Default"                   # Replace with your AAP organization

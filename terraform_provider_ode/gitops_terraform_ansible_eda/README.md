@@ -87,16 +87,17 @@ You can use this sample to implement GitOps, Terraform, Ansible Automation Platf
    - Go to "Automation Execution" --> "Templates"
    - Click “Create template” --> “Create job template”
    - Configure the job template with:
-     - Name
+     - Name: `provision_instance`
      - Inventory
      - Project
      - Execution Environment (use your Terraform EE)
      - Playbook
      - Click “Create job template”
-   - Create additional templates as needed
+   - Create another additional template named `configure_instance`
    - To create a workflow:
      - Go to "Automation Execution" --> "Templates"
      - Click “Create template” --> “Create workflow job template”
+     - Name: `ode_workflow` to match what's specified in the rulebook
      - When done entering values click “Create workflow job template”
      - Add nodes for each job template
      - Configure the workflow paths
@@ -124,7 +125,7 @@ You can use this sample to implement GitOps, Terraform, Ansible Automation Platf
 3. Create Decision Environment
    - Go to Automation Decisions --> Decision Environments
    - Click "Create decision environment"
-   - Enter the required information
+   - Enter the required information. For Image, use `quay.io/ansible/ansible-rulebook:latest`
    - Click "Create decision environment"
 
 4. Create a new project
