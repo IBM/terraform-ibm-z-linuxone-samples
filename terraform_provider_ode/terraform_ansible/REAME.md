@@ -24,8 +24,7 @@ Ansible is used to configure the provisioned infrastructure. It connects to the 
 - [***configure_instance***](playbook/configure_instance.yml): change `ibmuser` user password using `zos_tso_command` module
 
 ## Terraform configuration files
-- [***backend.tf***](terraform/backend.tf): remote backend configuration for state file
-- [***main.tf***](terraform/backend.tf): main configuration file
+- [***main.tf***](terraform/main.tf): main configuration file
 - [***terraform.tfvars***](terraform/terraform.tfvars): variable values to be used 
 - [***variables.tf***](terraform/variables.tf): variables definition
 
