@@ -10,7 +10,7 @@ variable "openstack_password" {
   sensitive   = true
 }
 variable "openstack_tenant_name" {
-  description = "ICIC project name"
+  description = "ICIC project name. It is expected that this project already exists."
   type        = string
 }
 variable "openstack_auth_url" {
