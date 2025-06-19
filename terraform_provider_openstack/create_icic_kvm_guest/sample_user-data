@@ -1,0 +1,18 @@
+#cloud-config
+groups:
+    - admin
+users:
+    - default
+    - name: newuser
+      gecos: lozcoc automation user
+      groups: admin, root, wheel
+      shell: /bin/bash
+      sudo: 
+        - ALL=(ALL) NOPASSWD:ALL
+      lock_passwd: true
+chpasswd:
+  list: |
+    root:<rootPassword>
+    cloud-user:<userPassword>
+    newuser:<userPassword>
+  expire: false
