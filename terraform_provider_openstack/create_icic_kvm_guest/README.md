@@ -17,3 +17,4 @@ The terraform files in this directory can be used to create a RHEL KVM guest wit
 1. Automatically create a new ICIC project for the guest. 
 2. Can we create an OCP guest with Terraform in ICIC? I'm assuming yes, it's just a matter of actually writing it
 3. Create guest in a z/VM ICIC environment. It should be similar but I think I need to be more careful about the image used since it's IPL device might be different
+4. Checking hypervisor type to make sure the guest is being deployed on a KVM hypervisor?
