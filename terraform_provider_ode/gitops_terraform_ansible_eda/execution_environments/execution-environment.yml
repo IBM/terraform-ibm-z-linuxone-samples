@@ -12,16 +12,7 @@ dependencies:
 options:
   package_manager_path: /usr/bin/microdnf
 
-# copy your CA cert files into the build context so we can refer to them later...
-# additional_build_files:
-    # - src: files
-    # dest: configs
-
 additional_build_steps:
-    # Move the next 3 lines into the `append_base` concatenation to configure your internal CA certificate as needed
-    # COPY _build/configs/root.crt /etc/pki/ca-trust/source/anchors
-    # COPY _build/configs/intermediate.crt /etc/pki/ca-trust/source/anchors
-    # RUN update-ca-trust 
   append_base: |
     RUN microdnf install yum && yum install -y yum-utils
     RUN yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
