@@ -1,4 +1,4 @@
-# GitOps with Terraform Enterprise, Ansible Automation Platform, and Event-Driven Ansible
+# Manage z/OS Logical Partions with GitOps with Terraform Enterprise, Ansible Automation Platform, and Event-Driven Ansible
 
 Automation is the backbone of scalable, reliable, and secure infrastructure. When you work with z/OS logical partitions (LPARs), combining GitOps, Terraform, Ansible Automation Platform, and Event-Driven Ansible creates a powerful, event-driven and declarative infrastructure as code (IaC).
 
