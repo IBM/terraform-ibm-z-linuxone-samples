@@ -1,8 +1,8 @@
 # GitOps with Terraform Enterprise, Ansible Automation Platform, and Event-Driven Ansible
 
-Automation is the backbone of scalable, reliable, and secure infrastructure. When you work with On-Demand Environments, combining GitOps, Terraform, Ansible Automation Platform, and Event-Driven Ansible creates a powerful, event-driven and declarative infrastructure pipeline.
+Automation is the backbone of scalable, reliable, and secure infrastructure. When you work with z/OS logical partitions (LPARs), combining GitOps, Terraform, Ansible Automation Platform, and Event-Driven Ansible creates a powerful, event-driven and declarative infrastructure as code (IaC).
 
-You can use this sample to implement GitOps, Terraform, Ansible Automation Platform, and Event-Driven Ansible to import and update existing z/OS logical partitions (LPAR) via the Hardware Management Console (HMC) APIs. This powerful combination of tools allows for efficient and automated management of z/OS LPARs, ensuring that your infrastructure is always up-to-date and configured correctly.
+You can use this sample to implement GitOps, Terraform, Ansible Automation Platform, and Event-Driven Ansible to import and update existing z/OS LPARs via the Hardware Management Console (HMC) APIs. This powerful combination of tools allows for efficient and automated management of z/OS LPARs, ensuring that your infrastructure is always up-to-date and configured correctly.
 
 ## Key components overview
 
