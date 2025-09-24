@@ -1,4 +1,4 @@
-# GitOps and Terraform Enterprise to manage z/OS Logical Partitions
+# Manage z/OS Logical Partitions using GitOps and Terraform Enterprise
 
 This is a step-by-step guide on using GitOps and Terraform Enterprise to import an existing z/OS LPAR and increase its number of intial CP.
 
