@@ -95,11 +95,11 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
 1. **Update resource configuration file**:  
    Update `generated_resources.tf` to increase the CP `amount=` value to a higher number
    ```hcl
-   cp = {
-    amount     = your_higher_amount,
-    ...
-   }
-  ```
+      cp = {
+       amount = your_higher_amount,
+       ...
+      }
+   ```
 
 2. **Verify the update plan**:  
    - Run `terraform plan` 
