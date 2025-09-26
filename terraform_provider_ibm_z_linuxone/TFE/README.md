@@ -63,7 +63,7 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
 ---
 ### Step 3: Pre-Import Preparation
 1. **Find an existing LPAR using HMC**:  
-   Log on to HCM or using HMC APIs to find the existing LPAR you want to update.
+   Log on to HMC or using HMC APIs to find the existing LPAR you want to update.
 
 2. ** Review code structure**:  
    The sample code has the following organization for Terraform files:  
@@ -93,9 +93,19 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
 
 ### Step 5: Update configuration file and push changes to Github
 1. **Update resource configuration file**:  
-   Update `generated_resources.tf` to increase the CP `initial=` value to a higher number
+   Update `generated_resources.tf` to increase the CP `amount=` value to a higher number
+   ```hcl
+   cp = {
+    amount     = your_higher_amount,
+    ...
+  }
+  ```
 
-2. **Commit and push changes to Git**:  
+2. **Verify the update plan**:  
+   - Run `terraform plan` 
+   - Verify the output that shows the correct change
+  
+3. **Commit and push changes to Git**:  
    ```bash
       git add .
       git commit -sm "your_commit_message"
@@ -103,15 +113,11 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
    ```
    This triggers the TFE pipeline automatically.
 
-3. **Review plan in TFE**:  
-   - TFE will run `terraform plan` and show the instance size change.  
-   - Verify the output
-
-4. **Review Apply changes via TFE**:  
-   Review the run in TFE to execute the resize. Check the state file for correct changes.
+4. **Optional: Review Apply changes via TFE**:  
+   Review the run output in TFE and check the state file for correct changes.
 ---
 
-### Step 6: Verify LPAR CP initial number changed in HMC
+### Step 6: Verify LPAR CP `amount=` number changed in HMC
    Log on to HMC to confirm the LPAR now shows the new number of CP.
 
 This sample shows how to combine GitOps for change tracking and TFE for state management. The approach ensures a controlled and auditable process for importing and modifying existing z/OS LPAR resources.
