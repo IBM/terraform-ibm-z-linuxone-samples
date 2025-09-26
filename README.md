@@ -5,9 +5,14 @@ The samples in this repository are written using the IBM Terraform Self-Managed 
 
 ## Available Samples
 - z/OS Dev and Test Environments
+
   - [Provision and configure an On-Demand z/OS Environment with Terraform and Ansible](terraform_provider_ode/terraform_ansible)
-- End-to-end automation
-  - [GitOps with Terraform Enterprise, Ansible Automation Platform, and Event-Driven Ansible](terraform_provider_ode/gitops_terraform_ansible_eda)
+  - [GitOps workflows for On-Demand z/OS Environments using Terraform Enterprise, Ansible Automation Platform, and-Event-Driven Ansible](terraform_provider_ode/gitops_terraform_ansible_eda)
+
+- IBM Z and LinuxONE Terraform provider
+
+  - [Manage z/OS Logical Partitions using GitOps and Terraform Enterprise](terraform_provider_ibm_z_linuxone/TFE)
+  - [GitOps workflows for z/OS LPARs using Terraform Enterprise, Ansible Automation Platform, and Event-Driven Ansible](terraform_provider_ibm_z_linuxone/ansible)
 
 ## Copyright
 © Copyright IBM Corporation 2025

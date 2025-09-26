@@ -1,0 +1,5 @@
+# Subtitute these variables and use them for your Terraform backend config credential so AAP can store and retrieve Terraform state file
+hostname = "your-terraform-server-url" 
+organization = "your-terraform-org" 
+token = "your-terraform-server-api-token"
+workspaces {name = "your-workspace"} 
