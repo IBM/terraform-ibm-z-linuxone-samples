@@ -17,6 +17,8 @@ The following workflow creates a specialized container image containing:
 
 The image is built locally and then published to Quay.io for use in automation controllers like AAP or AWX.
 
+For more information on how to build Execuation Environment, please see https://docs.ansible.com/ansible/latest/getting_started_ee/index.html
+
 ## Prerequisites
 
 Before running these commands, ensure you have:
