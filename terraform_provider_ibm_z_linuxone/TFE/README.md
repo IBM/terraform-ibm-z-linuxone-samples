@@ -98,7 +98,7 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
    cp = {
     amount     = your_higher_amount,
     ...
-  }
+   }
   ```
 
 2. **Verify the update plan**:  
