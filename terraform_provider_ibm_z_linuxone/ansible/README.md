@@ -1,12 +1,16 @@
 # Manage z/OS Logical Partions using GitOps with Terraform Enterprise, Ansible Automation Platform, and Event-Driven Ansible
+# Manage z/OS Logical Partions using GitOps with Terraform Enterprise, Ansible Automation Platform, and Event-Driven Ansible
 
 Automation is the backbone of scalable, reliable, and secure infrastructure. When you work with z/OS logical partitions (LPARs), combining GitOps, Terraform, Ansible Automation Platform, and Event-Driven Ansible creates a powerful, event-driven and declarative infrastructure as code (IaC).
+Automation is the backbone of scalable, reliable, and secure infrastructure. When you work with z/OS logical partitions (LPARs), combining GitOps, Terraform, Ansible Automation Platform, and Event-Driven Ansible creates a powerful, event-driven and declarative infrastructure as code (IaC).
 
+You can use this sample to implement GitOps, Terraform, Ansible Automation Platform, and Event-Driven Ansible to import and update existing z/OS LPARs via the Hardware Management Console (HMC) APIs. This powerful combination of tools allows for efficient and automated management of z/OS LPARs, ensuring that your infrastructure is always up-to-date and configured correctly.
 You can use this sample to implement GitOps, Terraform, Ansible Automation Platform, and Event-Driven Ansible to import and update existing z/OS LPARs via the Hardware Management Console (HMC) APIs. This powerful combination of tools allows for efficient and automated management of z/OS LPARs, ensuring that your infrastructure is always up-to-date and configured correctly.
 
 ## Key components overview
 
 - GitOps is a methodology that uses Git as the single source of truth for infrastructure and application configurations. It enables version-controlled, auditable, and automated deployments.
+- Terraform Enterprise by HashiCorp is an infrastructure as code (IaC) tool that allows you to define and provision infrastructure by using a declarative configuration language.
 - Terraform Enterprise by HashiCorp is an infrastructure as code (IaC) tool that allows you to define and provision infrastructure by using a declarative configuration language.
 - Ansible Automation Platform (AAP) provides enterprise-grade automation capabilities, including workflows, RBAC, and integrations with CI/CD pipelines.
 - Event-Driven Ansible (EDA) listens for events (for example, webhook triggers, alerts, or Git changes) and automatically triggers Ansible playbooks in response.

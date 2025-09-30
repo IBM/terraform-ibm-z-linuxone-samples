@@ -1,4 +1,5 @@
 # Manage z/OS Logical Partitions using GitOps and Terraform Enterprise
+# Manage z/OS Logical Partitions using GitOps and Terraform Enterprise
 
 This is a step-by-step guide on using GitOps and Terraform Enterprise to import an existing z/OS LPAR and increase its number of intial CP.
 
@@ -64,6 +65,7 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
 ### Step 3: Pre-Import Preparation
 1. **Find an existing LPAR using HMC**:  
    Log on to HMC or using HMC APIs to find the existing LPAR you want to update.
+   Log on to HMC or using HMC APIs to find the existing LPAR you want to update.
 
 2. ** Review code structure**:  
    The sample code has the following organization for Terraform files:  
@@ -115,8 +117,11 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
 
 4. **Optional: Review Apply changes via TFE**:  
    Review the run output in TFE and check the state file for correct changes.
+4. **Optional: Review Apply changes via TFE**:  
+   Review the run output in TFE and check the state file for correct changes.
 ---
 
+### Step 6: Verify LPAR CP `amount=` number changed in HMC
 ### Step 6: Verify LPAR CP `amount=` number changed in HMC
    Log on to HMC to confirm the LPAR now shows the new number of CP.
 
