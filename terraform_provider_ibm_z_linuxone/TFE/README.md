@@ -1,6 +1,6 @@
 # Manage z/OS Logical Partitions using GitOps and Terraform Enterprise
 
-This is a step-by-step guide on using GitOps and Terraform Enterprise to import an existing z/OS LPAR and increase its number of intial CP.
+This is a step-by-step guide on using GitOps and Terraform Enterprise to import an existing z/OS LPAR and increase its CP `amount=` value.
 
 ### Prerequisites
 1.  **Terraform Enterprise (TFE) Account**: Ensure you have access to TFE with appropriate permissions.
@@ -95,11 +95,11 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
 1. **Update resource configuration file**:  
    Update `generated_resources.tf` to increase the CP `amount=` value to a higher number
    ```hcl
-      cp = {
-       amount = your_higher_amount,
-       ...
-      }
-   ```
+   cp = {
+    amount = your_higher_amount,
+    ...
+  }
+  ```
 
 2. **Verify the update plan**:  
    - Run `terraform plan` 

@@ -154,11 +154,11 @@ You can use this sample to implement GitOps, Terraform, Ansible Automation Platf
    ```
 4. Edit the *generated_resources.tf* file to increase the `amount=` value of the `cp{}` block
    ```hcl
-      cp = {
-      amount = your_higher_amount,
-      ...
-      }
-   ```
+   cp = {
+    amount = your_higher_amount,
+    ...
+  }
+  ```
 5. Update and encrypt the [hmc_secrets.yml](playbooks/hmc_secrets.yml) using the following command:
    ```bash
    ansible-vault encrypt hmc_secrets.yml
