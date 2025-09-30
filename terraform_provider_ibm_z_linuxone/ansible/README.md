@@ -11,7 +11,6 @@ You can use this sample to implement GitOps, Terraform, Ansible Automation Platf
 
 - GitOps is a methodology that uses Git as the single source of truth for infrastructure and application configurations. It enables version-controlled, auditable, and automated deployments.
 - Terraform Enterprise by HashiCorp is an infrastructure as code (IaC) tool that allows you to define and provision infrastructure by using a declarative configuration language.
-- Terraform Enterprise by HashiCorp is an infrastructure as code (IaC) tool that allows you to define and provision infrastructure by using a declarative configuration language.
 - Ansible Automation Platform (AAP) provides enterprise-grade automation capabilities, including workflows, RBAC, and integrations with CI/CD pipelines.
 - Event-Driven Ansible (EDA) listens for events (for example, webhook triggers, alerts, or Git changes) and automatically triggers Ansible playbooks in response.
 
