@@ -1,0 +1,12 @@
+
+      frontend tf_demo_http
+        mode http
+        option tcplog
+        bind *:80
+        default_backend tf_httpd
+
+      backend tf_httpd
+        mode http
+        option httpchk GET /phpinfo.php
+      {% for guest in httpd_instances.value | json_query(query_json) %}  server {{ guest.vm_name }} {{ guest.ip_address }}:80 check
+      {% endfor %}
