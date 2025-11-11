@@ -14,6 +14,10 @@ The samples in this repository are written using the IBM Terraform Self-Managed 
   - [Manage z/OS Logical Partitions using GitOps and Terraform Enterprise](terraform_provider_ibm_z_linuxone/TFE)
   - [GitOps workflows for z/OS LPARs using Terraform Enterprise, Ansible Automation Platform, and Event-Driven Ansible](terraform_provider_ibm_z_linuxone/ansible)
 
+- IBM z/VM image management and provisioning with Packer and Terraform (using ICIC)
+
+  - [Terraform, Packer, and IBM Cloud Infrastructure Center](terraform_packer_zVM_icic)
+
 ## Copyright
 © Copyright IBM Corporation 2025
 
