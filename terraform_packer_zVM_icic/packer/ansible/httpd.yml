@@ -1,0 +1,33 @@
+---
+- name: Install Apache and PHP
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  loop:
+    - httpd
+    - php-fpm
+
+- name: Install a phpinfo file on the HTTP directory
+  ansible.builtin.copy:
+    dest: /var/www/html/phpinfo.php
+    content: |
+      <?php
+      phpinfo();
+      ?>
+    owner: apache
+    group: apache
+    mode: "0664"
+
+- name: Open the firewall for HTTP
+  firewalld:
+    service: http
+    state: enabled
+    permanent: true
+
+- name: Run Apache
+  ansible.builtin.systemd:
+    name: httpd
+    state: stopped
+    enabled: false

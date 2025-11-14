@@ -1,0 +1,11 @@
+- name: Apache Configuration
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: "Include HTTPD tasks"
+      ansible.builtin.include_tasks: httpd.yml
+      when: "'httpd' in lookup('ansible.builtin.env', 'MY_BUILD_NAME')"
+    - name: "Include HAProxy tasks"
+      ansible.builtin.include_tasks: haproxy.yml
+      when: "'haproxy' in lookup('ansible.builtin.env', 'MY_BUILD_NAME')"

@@ -1,0 +1,7 @@
+- name: HAProxy Configuration
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: "Include HAProxy tasks"
+      ansible.builtin.include_tasks: haproxy.yml
