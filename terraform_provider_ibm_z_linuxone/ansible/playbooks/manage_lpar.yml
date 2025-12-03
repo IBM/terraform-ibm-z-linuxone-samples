@@ -3,20 +3,28 @@
   hosts: localhost
   gather_facts: false
   vars_files:
-    - hmc_secrets.yml
+    - playbook_credentials.yml
+
   vars:
+    cpc_name: "YOUR_SYSTEM"          # <-- Supply your CPC name here
+    target_lpar: "YOUR_LPAR"        # <-- LPAR name to modify
+    allow_ipl: true               # Whether to deactivate/reactivate automatically
+
     terraform_path: "../terraform"
     terraform_state: "present"
 
-    task_desc: "{{'Call Terraform to update a LPAR resource into state file' if terraform_state == 'present' else 'Call Terraform to destroy a LPAR resource from state file'}}"
+    task_desc: "{{'Call Terraform to update a LPAR activation profile'}}"
 
   tasks:
+    #######################################################################################
+    # 1. Create terraform.tfvars file and call terraform to update LPAR activation profile
+    ######################################################################################
     - name: Generate terraform.tfvars file
       ansible.builtin.copy:
         content: |
-          ibm_z_linuxone_host  = "{{ ibm_z_linuxone_host }}" 
-          ibm_z_linuxone_username  = "{{ ibm_z_linuxone_username }}" 
-          ibm_z_linuxone_password  = "{{ ibm_z_linuxone_password }}" # pragma: allowlist secret
+          ibm_z_linuxone_hmc_host  = "https://{{ hmc_host }}" 
+          ibm_z_linuxone_hmc_username  = "{{ hmc_auth.userid }}" 
+          ibm_z_linuxone_hmc_password  = "{{ hmc_auth.password }}" # pragma: allowlist secret
         dest: "{{ terraform_path }}/terraform.tfvars"
 
     - name: "{{ task_desc }}"
@@ -28,3 +36,60 @@
         backend_config_files:
           - "{{ lookup('ansible.builtin.env', 'TF_BACKEND_CONFIG_FILE') }}"
       delegate_to: localhost
+      register: terraform_result
+
+    - block:
+        - name: Set update_skipped fact
+          set_fact:
+            update_skipped: "{{ terraform_result.changed == false }}"
+
+        - name: Log terraform result
+          debug:
+            var: terraform_result
+      when: terraform_result is defined
+
+    #####################################################################
+    # 2. Create HMC session
+    #####################################################################
+    - name: Create session to HMC
+      ibm.ibm_zhmc.zhmc_session:
+        hmc_host: "{{ hmc_host }}"
+        hmc_auth: "{{ hmc_auth }} "
+        action: create
+      register: hmc_session_info
+      when: allow_ipl | bool and not update_skipped
+
+
+    #####################################################################
+    # 3. Deactivate and reactivate (IPL) if requested
+    #####################################################################
+    - name: Deactivate LPAR
+      when: allow_ipl | bool and not update_skipped
+      ibm.ibm_zhmc.zhmc_lpar:
+        hmc_host: "{{ hmc_host }}"
+        hmc_auth: "{{ hmc_auth }}"
+        cpc_name: "{{ cpc_name }}"
+        name: "{{ target_lpar }}"
+        state: inactive
+      register: deactivate_result
+
+    - name: Activate (IPL) LPAR
+      when: allow_ipl | bool and not update_skipped
+      ibm.ibm_zhmc.zhmc_lpar:
+        hmc_host: "{{ hmc_host }}"
+        hmc_auth: "{{ hmc_auth }}"
+        cpc_name: "{{ cpc_name }}"
+        name: "{{ target_lpar }}"
+        state: loaded
+      register: activate_result
+
+    #####################################################################
+    # 4. Log off session
+    #####################################################################
+    - name: Delete HMC session
+      ibm.ibm_zhmc.zhmc_session:
+        hmc_host: "{{ hmc_session_info.hmc_host }}"
+        hmc_auth: "{{ hmc_session_info.hmc_auth }}"
+        action: delete
+      ignore_errors: yes
+      when: hmc_session_info is defined and allow_ipl | bool and not update_skipped
