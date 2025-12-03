@@ -1,0 +1,69 @@
+---
+- name: Activate LPAR profile using zhmc collection
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - zhmc_credentials.yml
+
+  vars:
+    cpc_name: ""          # <-- Supply your CPC name here
+    target_lpar: ""        # <-- LPAR name to modify
+    allow_ipl: true               # Whether to deactivate/reactivate automatically
+    terraform_path: "../terraform"
+
+  tasks:
+    #######################################################################################
+    # 1. Create terraform.tfvars file and call terraform to update LPAR activation profile
+    ######################################################################################
+    - name: Generate terraform.tfvars file
+      ansible.builtin.copy:
+        content: |
+          ibm_z_linuxone_hmc_host  = "https://{{ hmc_host }}" 
+          ibm_z_linuxone_hmc_username  = "{{ hmc_auth.userid }}" 
+          ibm_z_linuxone_hmc_password  = "{{ hmc_auth.password }}" # pragma: allowlist secret
+        dest: "{{ terraform_path }}/terraform.tfvars"
+
+    #####################################################################
+    # 2. Create HMC session
+    #####################################################################
+    - name: Create session to HMC
+      ibm.ibm_zhmc.zhmc_session:
+        hmc_host: "{{ hmc_host }}"
+        hmc_auth: "{{ hmc_auth }} "
+        action: create
+      register: hmc_session_info
+      when: allow_ipl | bool
+
+    #####################################################################
+    # 3. Deactivate and reactivate (IPL) if requested
+    #####################################################################
+    - name: Deactivate LPAR
+      when: allow_ipl | bool
+      ibm.ibm_zhmc.zhmc_lpar:
+        hmc_host: "{{ hmc_host }}"
+        hmc_auth: "{{ hmc_auth }}"
+        cpc_name: "{{ cpc_name }}"
+        name: "{{ target_lpar }}"
+        state: inactive
+      register: deactivate_result
+
+    - name: Activate (IPL) LPAR
+      when: allow_ipl | bool
+      ibm.ibm_zhmc.zhmc_lpar:
+        hmc_host: "{{ hmc_host }}"
+        hmc_auth: "{{ hmc_auth }}"
+        cpc_name: "{{ cpc_name }}"
+        name: "{{ target_lpar }}"
+        state: loaded
+      register: activate_result
+
+    #####################################################################
+    # 4. Log off session
+    #####################################################################
+    - name: Delete HMC session
+      ibm.ibm_zhmc.zhmc_session:
+        hmc_host: "{{ hmc_session_info.hmc_host }}"
+        hmc_auth: "{{ hmc_session_info.hmc_auth }}"
+        action: delete
+      ignore_errors: yes
+      when: hmc_session_info is defined and allow_ipl | bool
