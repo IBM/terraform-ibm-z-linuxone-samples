@@ -16,6 +16,7 @@ resource "null_resource" "lpar_changed" {
 resource "aap_job" "activate_lpar_profile" {
     depends_on = [ibm-z-linuxone_logical-partition.YOUR_SYSTEM-YOUR_LPAR]
     job_template_id = data.aap_job_template.z-provider-activate-lpar-profile.id
+    wait_for_completion = true
 
     extra_vars = jsonencode({
         "cpc_name" = ibm-z-linuxone_logical-partition.YOUR_SYSTEM-YOUR_LPAR.system_name
