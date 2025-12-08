@@ -56,7 +56,7 @@ You can use this sample to implement GitOps, Terraform, Ansible Automation Platf
    - Create a ***Vault*** credential:
      - Click "Add Credential"
      - Select "Vault" as credential type
-     - Enter the password you used to encrypt your Terraform variables file
+     - Enter the same password you use to encrypt your Terraform variables file [playbook_credentials](playbooks/playbook_credentials.yml)
      - Click "Create credential"
       
    - Create a ***Machine*** credential:
@@ -92,7 +92,7 @@ You can use this sample to implement GitOps, Terraform, Ansible Automation Platf
      - Inventory
      - Project
      - Execution Environment (use your Terraform EE)
-     - Playbook
+     - Playbook. Customize and use the [sample playbook](playbooks/manage_lpar.yml)
      - Click “Create job template”
   
 
@@ -157,11 +157,11 @@ You can use this sample to implement GitOps, Terraform, Ansible Automation Platf
    cp = {
     amount = your_higher_amount,
     ...
-  }
-  ```
-5. Update and encrypt the [hmc_secrets.yml](playbooks/hmc_secrets.yml) using the following command:
+   }        
+   ```
+5. Update and encrypt the [playbook_credentials](playbooks/playbook_credentials.yml) using the following command: 
    ```bash
-   ansible-vault encrypt hmc_secrets.yml
+   ansible-vault encrypt playbook_credentials.yml
    ```
    Use the Vault password that matches *Vault* credential created in the previous step to encrypt this file
 6. Commit all changes and push to Github

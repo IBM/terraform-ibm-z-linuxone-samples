@@ -6,8 +6,8 @@
     - zhmc_credentials.yml
 
   vars:
-    cpc_name: ""          # <-- Supply your CPC name here
-    target_lpar: ""        # <-- LPAR name to modify
+    cpc_name: "YOUR_SYSTEM"          # <-- Supply your CPC name here
+    target_lpar: "YOUR_LPAR"        # <-- LPAR name to modify
     allow_ipl: true               # Whether to deactivate/reactivate automatically
     terraform_path: "../terraform"
 

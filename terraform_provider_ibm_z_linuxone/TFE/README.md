@@ -3,10 +3,10 @@
 This is a step-by-step guide on using GitOps and Terraform Enterprise to import an existing z/OS LPAR and increase its CP `amount=` value.
 
 ### Prerequisites
-1.  **Ansible Automation Platform**: Ensure you have access and have set up a job template to de-activate/activate an LPAR
-2.  **Terraform Enterprise (TFE) Account**: Ensure you have access to TFE with appropriate permissions.
-3.  **HMC Account**: Ensure you have credentials with permissions to manage HMC instances.
-4.  **Git Repository**: Have a Git repository (e.g., GitHub, GitLab) to store your Terraform configuration.
+1.  **Ansible Automation Platform**: Ensure you have access and created a job template to de-activate/activate LPAR activation profiles
+2.  **Terraform Enterprise (TFE) Account**: Ensure you have access to TFE with appropriate permissions
+3.  **HMC Account**: Ensure you have credentials with permissions to manage HMC instances
+4.  **Git Repository**: Have a Git repository (e.g., GitHub, GitLab) to store your Terraform configuration
 5.  **Local Tools Installed**:
     *   Git CLI 
     *   Terraform CLI 
@@ -37,11 +37,14 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
     ```
 
 ---
-###  Step 2: Create a job template on AAP to activate LPAR profile
-1. **Create an inventory for a localhost**:
-2. **Create a Vault credential resource to hold the password for the playbook secrets file**:
-3. **Create a project and connect to the git repo above**:
-4. **Create a job template inside the new project and connect it to the sample playbook**
+###  Step 2: Create a job template on AAP to deactivate/activate LPAR profiles
+1. **Create an inventory for a localhost**
+2. **Create a Vault credential resource to hold the password for the playbook_credentials file**:
+   1. Edit the [zhmc_credentials](playbook/zhmc_credentials.yml) file and use the `ansible-vault encrypt zhmc_credentials.yml ` command to encrytp the file. Note the password.
+   2. Use the same password to create a Vault credential resource on AAP
+3. **Create a Terraform backend config credential for your backend block***
+4. **Create a project and connect it to the git repo above**
+5. **Create a job template inside the new project and connect it to the [sample playbook](playbook/activate_lpar_profile.yml). Use the Vault credential and the Terraform backend config credential created in step 2 and step 3 for this job template**
 
 ---
 ###  Step 3: Configure your Terraform Enterprise
@@ -57,11 +60,14 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
         *   Under **Execution Mode**, ensure "Remote" is selected.
 3. **Set Environment Variables in TFE**:
     *   Create the following environment variables for the *ibm_z_linuxone* provider
-        *   `IBM_Z_LINUXONE_HOST`
-        *   `IBM_Z_LINUXONE_USERNAME` 
-        *   `IBM_Z_LINUXONE_PASSWORD` 
-        *   `IBM_Z_LINUXONE_TLS_INSECURE_SKIP_VERIFY`
-    *   Mark  `IBM_Z_LINUXONE_USERNAME`, `IBM_Z_LINUXONE_PASSWORD`  as sensitive to secure them.
+        *   `AAP_HOSTNAME`
+        *   `AAP_USERNAME`
+        *   `AAP_PASSWORD`
+        *   `IBM_Z_LINUXONE_HMC_HOST`
+        *   `IBM_Z_LINUXONE_HMC_USERNAME` 
+        *   `IBM_Z_LINUXONE_HMC_PASSWORD` 
+        *   `IBM_Z_LINUXONE_HMC_TLS_INSECURE_SKIP_VERIFY`
+    *   Mark  `AAP_USERNAME`, `AAP_PASSWORD`, `IBM_Z_LINUXONE_HMC_USERNAME`, `IBM_Z_LINUXONE_HMC_PASSWORD`  as sensitive to secure them.
 4. **Edit Version Control Setting**:
     * Confirm the repository name is correct
     * Set the *Terraform Working Directory* to match your sample code
@@ -105,7 +111,7 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
    Update `generated_resources.tf` to increase the CP `amount=` value to a higher number
    ```hcl
    cp = {
-    amount = your_higher_amount,
+    amount = YOUR_HIGHER_AMOUNT,
     ...
   }
   ```
@@ -127,6 +133,6 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
 ---
 
 ### Step 7: Verify LPAR CP `amount=` number changed in HMC
-   Log on to HMC to confirm the LPAR now shows the new number of CP.
+   Log on to HMC to confirm the LPAR activation profile now shows the new number of CP.
 
 This sample shows how to combine GitOps for change tracking and TFE for state management. The approach ensures a controlled and auditable process for importing and modifying existing z/OS LPAR resources.

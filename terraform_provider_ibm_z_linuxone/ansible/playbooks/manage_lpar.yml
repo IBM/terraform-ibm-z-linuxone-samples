@@ -93,3 +93,14 @@
         action: delete
       ignore_errors: yes
       when: hmc_session_info is defined and allow_ipl | bool and not update_skipped
+
+    #####################################################################
+    # 5. Refresh state file to reflect any changes
+    #####################################################################
+    - name: Refresh terraform state
+      ansible.builtin.shell: |
+        terraform apply -auto-approve -refresh-only
+      args:
+        chdir: "{{ terraform_path }}"
+      delegate_to: localhost
+      register: terraform_refresh_result
