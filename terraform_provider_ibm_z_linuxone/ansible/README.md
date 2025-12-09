@@ -59,12 +59,6 @@ You can use this sample to implement GitOps, Terraform, Ansible Automation Platf
      - Enter the same password you use to encrypt your Terraform variables file [playbook_credentials](playbooks/playbook_credentials.yml)
      - Click "Create credential"
       
-   - Create a ***Machine*** credential:
-     - Click "Add Credential"
-     - Select "Machine" as credential type
-     - Upload the private SSH that match the public key you are creating your z/OS instance with
-     - Click "Create credential"
-  
 3. Set up Project:
    - Go to "Automation Execution" --> "Projects"
    - Click "Create project"
