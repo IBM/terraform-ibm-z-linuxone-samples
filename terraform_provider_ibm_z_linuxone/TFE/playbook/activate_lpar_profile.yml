@@ -1,19 +1,15 @@
 ---
-- name: Manage LPAR using Terraform
+- name: Activate LPAR profile using zhmc collection
   hosts: localhost
   gather_facts: false
   vars_files:
-    - playbook_credentials.yml
+    - zhmc_credentials.yml
 
   vars:
     cpc_name: "YOUR_SYSTEM"          # <-- Supply your CPC name here
     target_lpar: "YOUR_LPAR"        # <-- LPAR name to modify
     allow_ipl: true               # Whether to deactivate/reactivate automatically
-
     terraform_path: "../terraform"
-    terraform_state: "present"
-
-    task_desc: "{{'Call Terraform to update a LPAR activation profile'}}"
 
   tasks:
     #######################################################################################
@@ -27,27 +23,6 @@
           ibm_z_linuxone_hmc_password  = "{{ hmc_auth.password }}" # pragma: allowlist secret
         dest: "{{ terraform_path }}/terraform.tfvars"
 
-    - name: "{{ task_desc }}"
-      cloud.terraform.terraform:
-        project_path: "{{ terraform_path }}"
-        state: "{{ terraform_state }}"
-        force_init: true  # Force reinitialization if needed
-        # Note use of the env variable set by the Terraform backend credential to store the backend configuration file path
-        backend_config_files:
-          - "{{ lookup('ansible.builtin.env', 'TF_BACKEND_CONFIG_FILE') }}"
-      delegate_to: localhost
-      register: terraform_result
-
-    - block:
-        - name: Set update_skipped fact
-          set_fact:
-            update_skipped: "{{ terraform_result.changed == false }}"
-
-        - name: Log terraform result
-          debug:
-            var: terraform_result
-      when: terraform_result is defined
-
     #####################################################################
     # 2. Create HMC session
     #####################################################################
@@ -57,14 +32,13 @@
         hmc_auth: "{{ hmc_auth }} "
         action: create
       register: hmc_session_info
-      when: allow_ipl | bool and not update_skipped
-
+      when: allow_ipl | bool
 
     #####################################################################
     # 3. Deactivate and reactivate (IPL) if requested
     #####################################################################
     - name: Deactivate LPAR
-      when: allow_ipl | bool and not update_skipped
+      when: allow_ipl | bool
       ibm.ibm_zhmc.zhmc_lpar:
         hmc_host: "{{ hmc_host }}"
         hmc_auth: "{{ hmc_auth }}"
@@ -74,7 +48,7 @@
       register: deactivate_result
 
     - name: Activate (IPL) LPAR
-      when: allow_ipl | bool and not update_skipped
+      when: allow_ipl | bool
       ibm.ibm_zhmc.zhmc_lpar:
         hmc_host: "{{ hmc_host }}"
         hmc_auth: "{{ hmc_auth }}"
@@ -92,15 +66,4 @@
         hmc_auth: "{{ hmc_session_info.hmc_auth }}"
         action: delete
       ignore_errors: yes
-      when: hmc_session_info is defined and allow_ipl | bool and not update_skipped
-
-    #####################################################################
-    # 5. Refresh state file to reflect any changes
-    #####################################################################
-    - name: Refresh terraform state
-      ansible.builtin.shell: |
-        terraform apply -auto-approve -refresh-only
-      args:
-        chdir: "{{ terraform_path }}"
-      delegate_to: localhost
-      register: terraform_refresh_result
+      when: hmc_session_info is defined and allow_ipl | bool
