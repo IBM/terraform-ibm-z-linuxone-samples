@@ -40,7 +40,7 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
 ###  Step 2: Create a job template on AAP to deactivate/activate LPAR profiles
 1. **Create an inventory for a localhost**
 2. **Create a Vault credential resource to hold the password for the playbook_credentials file**:
-   1. Edit the [zhmc_credentials](playbook/zhmc_credentials.yml) file and use the `ansible-vault encrypt zhmc_credentials.yml ` command to encrytp the file. Note the password.
+   1. Edit the [zhmc_credentials](playbook/zhmc_credentials.yml) file and use the `ansible-vault encrypt zhmc_credentials.yml ` command to encrypt the file. Note the password.
    2. Use the same password to create a Vault credential resource on AAP
 3. **Create a Terraform backend config credential for your backend block***
 4. **Create a project and connect it to the git repo above**
