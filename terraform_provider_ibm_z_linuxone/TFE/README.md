@@ -31,7 +31,7 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
 
 2.  **Push this code to your own git repository**:
     ```bash
-    git remote add origin <YOUR_REPO_URL>
+    git remote set-url origin <YOUR_REPO_URL>
     git remote -v
     git push -u origin main
     ```
