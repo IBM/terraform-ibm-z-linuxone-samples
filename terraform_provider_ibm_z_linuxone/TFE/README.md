@@ -100,10 +100,19 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
 3. **Point to your provider**:  
    Update the [providers.tf](terraform/providers.tf) to point to the ibm_z_linuxone provider on your private registry
 
-4. **Generate a configuration file**:  
+4. **Temporarily change TFE execution mode to Local to perform the action in step 5**
+
+5. **Generate a configuration file**:  
    Use the following command to generate a configuration file
+
+   **Notes:** Add **-upgrade or -reconfigure** flag to the **terraform init** command as needed
+
    ```bash
+      terraform init
       terraform plan -generate-config-out=generated_resources.tf
+
+6. **Change TFE execution mode back to Remote**
+7. **Rename [activate_lpar_profile.tf.bak](terraform/activate_lpar_profile.tf.bak) to `activate_lpar_profile.tf`**
 ---
 
 ### Step 6: Update configuration file and push changes to Github

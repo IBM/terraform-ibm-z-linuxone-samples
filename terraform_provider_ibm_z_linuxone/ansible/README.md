@@ -108,19 +108,13 @@ You can use this sample to implement GitOps, Terraform, Ansible Automation Platf
    - For OAuth Token, Enter the token you generated in step 1
    - Click "Create credential"
 
-3. Create Decision Environment
-   - Go to Automation Decisions --> Decision Environments
-   - Click "Create decision environment"
-   - Enter the required information. For Image, use `quay.io/ansible/ansible-rulebook:latest`
-   - Click "Create decision environment"
-
-4. Create a new project
+3. Create a new project
    - Go to Automation Decisions --> Projects
    - Click "Create project"
    - Enter the required information
    - Click "Create project"
 
-5. Set up your rulebook:
+4. Set up your rulebook:
    - Go to “Automation Decisions" --> “Rulebook Activations”
    - Click “Create rulebook activation”
    - Enter the required information
@@ -128,7 +122,7 @@ You can use this sample to implement GitOps, Terraform, Ansible Automation Platf
       - Configure actions to trigger Ansible Controller templates
    - Save and activate the rulebook activation
 
-6. Configure Git hooks:
+5. Configure Git hooks:
    - Copy your EDA URL
    - Go to your Git repository settings menu
    - Navigate to the "Hooks" section
@@ -142,24 +136,27 @@ You can use this sample to implement GitOps, Terraform, Ansible Automation Platf
 ## Test your GitOps flow
 1. Navigate to the [terraform](terraform/) directory
 2. Update the [backend](terraform/backend.tf), [main](terraform/main.tf) and [provider](terraform/providers.tf) to match your environment
-3. Run the following command to import the existing LPAR into a configuration file
+3. Update the [terraform.tfvars](terraform/terraform.tfvars) file with your environment variables
+4. Run the following command to import the existing LPAR into a configuration file
+   **Notes:** Add **-upgrade** or **-reconfigure** to the **terraform init** command as needed
    ```bash
+   terraform init
    terraform plan -generate-config-out=generated_resources.tf
    ```
-4. Edit the *generated_resources.tf* file to increase the `amount=` value of the `cp{}` block
+5. Edit the *generated_resources.tf* file to increase the `amount=` value of the `cp{}` block
    ```hcl
    cp = {
     amount = your_higher_amount,
     ...
    }        
    ```
-5. Update and encrypt the [playbook_credentials](playbooks/playbook_credentials.yml) using the following command: 
+6. Update and encrypt the [playbook_credentials](playbooks/playbook_credentials.yml) using the following command: 
    ```bash
    ansible-vault encrypt playbook_credentials.yml
    ```
    Use the Vault password that matches *Vault* credential created in the previous step to encrypt this file
-6. Commit all changes and push to Github
-7. Observe the followings:
+7. Commit all changes and push to Github
+8. Observe the followings:
    - Github webhooks send a payload to EDA
    - EDA rulebook processes the webhook and calls the AAP workflow
    - AAP workflow executes the `z-provider-manage-lpar` playbook which in turn calls Terraform to update the z/OS LPAR
