@@ -109,7 +109,8 @@ This is a step-by-step guide on using GitOps and Terraform Enterprise to import 
 
    ```bash
       terraform init
-      terraform plan -generate-config-out=generated_resources.tf
+      terraform plan -generate-config-out=generated_resources.tf 
+   ```
 
 6. **Change TFE execution mode back to Remote**
 7. **Rename [activate_lpar_profile.tf.bak](terraform/activate_lpar_profile.tf.bak) to `activate_lpar_profile.tf`**
