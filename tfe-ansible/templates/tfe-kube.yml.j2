@@ -1,0 +1,132 @@
+---
+apiVersion: "v1"
+kind: "Pod"
+
+metadata:
+  labels:
+    app: "terraform-enterprise"
+  name: "{{ tfe_pod_name }}"
+
+spec:
+  restartPolicy: "Never"
+
+  containers:
+    - name: "{{ tfe_container_identifier }}"
+
+      image: "{{ tfe_image }}:{{ tfe_version }}"
+
+      env:
+        - name: "TFE_OPERATIONAL_MODE"
+          value: "{{ tfe_operational_mode }}"
+
+        - name: "TFE_LICENSE"
+          value: "{{ tfe_license }}"
+
+        - name: "TFE_HOSTNAME"
+          value: "{{ tfe_hostname }}"
+
+        - name: "TFE_HTTP_PORT"
+          value: "{{ tfe_http_port }}"
+
+        - name: "TFE_HTTPS_PORT"
+          value: "{{ tfe_https_port }}"
+
+        - name: "TFE_ADMIN_HTTPS_PORT"
+          value: "{{ tfe_admin_https_port }}"
+
+        - name: "TFE_TLS_CERT_FILE"
+          value: "/etc/ssl/private/terraform-enterprise/cert.pem"
+
+        - name: "TFE_TLS_KEY_FILE"
+          value: "/etc/ssl/private/terraform-enterprise/key.pem"
+
+        - name: "TFE_TLS_CA_BUNDLE_FILE"
+          value: "/etc/ssl/private/terraform-enterprise/bundle.pem"
+
+        - name: "TFE_DISK_CACHE_VOLUME_NAME"
+          value: "terraform-enterprise_terraform-enterprise-cache"
+
+        - name: "TFE_ENCRYPTION_PASSWORD"
+          value: "{{ tfe_encryption_password }}"
+
+        - name: "TFE_ADMIN_HTTPS_PORT"
+          value: "{{ tfe_admin_https_port }}"
+
+      ports:
+        - containerPort: 8080
+          hostPort: 80
+
+        - containerPort: 8443
+          hostPort: 443
+
+        - containerPort: 9090
+          hostPort: 9090
+
+        - containerPort: 8446
+          hostPort: 8446
+
+      securityContext:
+        capabilities:
+          add:
+            - "CAP_IPC_LOCK"
+
+        readOnlyRootFilesystem: true
+
+        seLinuxOptions:
+          type: "spc_t"
+
+      volumeMounts:
+
+        - mountPath: "/etc/ssl/private/terraform-enterprise"
+          name: "certs"
+
+        - mountPath: "/var/log/terraform-enterprise"
+          name: "log"
+
+        - mountPath: "/run"
+          name: "run"
+
+        - mountPath: "/tmp"
+          name: "tmp"
+
+        - mountPath: "/var/lib/terraform-enterprise"
+          name: "data"
+
+        - mountPath: "/run/docker.sock"
+          name: "docker-sock"
+
+        - mountPath: "/var/cache/tfe-task-worker/terraform"
+          name: "terraform-enterprise_terraform-enterprise-cache-pvc"
+
+  volumes:
+
+    - hostPath:
+        path: "{{ tfe_install_dir }}/certs"
+        type: "Directory"
+      name: "certs"
+
+    - emptyDir:
+        medium: "Memory"
+      name: "log"
+
+    - emptyDir:
+        medium: "Memory"
+      name: "run"
+
+    - emptyDir:
+        medium: "Memory"
+      name: "tmp"
+
+    - hostPath:
+        path: "{{ tfe_install_dir }}/data"
+        type: "Directory"
+      name: "data"
+
+    - hostPath:
+        path: "/run/podman/podman.sock"
+        type: "File"
+      name: "docker-sock"
+
+    - name: "terraform-enterprise_terraform-enterprise-cache-pvc"
+      persistentVolumeClaim:
+        claimName: "terraform-enterprise_terraform-enterprise-cache"

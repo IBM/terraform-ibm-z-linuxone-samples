@@ -1,0 +1,101 @@
+---
+- name: Uninstall Terraform Enterprise
+  hosts: tfe
+  become: true
+
+  vars:
+    tfe_pod_name: "{{ lookup('env', 'TFE_POD_NAME') }}"
+    tfe_container_name: "{{ lookup('env', 'TFE_CONTAINER_NAME') }}"
+    tfe_install_dir: "{{ lookup('env', 'TFE_INSTALL_DIR') }}"
+    tfe_kube_file: "{{ tfe_install_dir }}/tfe-kube.yml"
+    tfe_delete_data: "{{ lookup('env', 'TFE_DELETE_DATA') | default('false', true) | bool }}"
+
+  tasks:
+
+    # ---------------------------------------------------------
+    # Check if TFE pod exists
+    # ---------------------------------------------------------
+
+    - name: Check if TFE pod exists
+      ansible.builtin.command:
+        cmd: podman pod exists "{{ tfe_pod_name }}"
+      register: tfe_pod_exists
+      failed_when: false
+      changed_when: false
+
+      # ---------------------------------------------------------
+    # Stop TFE container
+    # ---------------------------------------------------------
+
+    - name: Stop TFE container
+      ansible.builtin.command:
+        cmd: podman stop {{ tfe_container_name }}
+      register: tfe_stop
+      failed_when: false
+      changed_when: tfe_stop.rc == 0
+
+
+    # ---------------------------------------------------------
+    # Remove TFE pod and containers
+    # ---------------------------------------------------------
+
+    - name: Remove TFE Podman pod
+      ansible.builtin.command:
+        cmd: podman pod rm -f "{{ tfe_pod_name }}"
+      when: tfe_pod_exists.rc == 0
+      register: tfe_pod_remove
+
+    - name: Display TFE pod removal result
+      ansible.builtin.debug:
+        msg: >-
+          {{
+            tfe_pod_remove.stdout
+            if tfe_pod_remove is defined
+            else 'TFE pod does not exist; nothing to remove.'
+          }}
+
+    # ---------------------------------------------------------
+    # Remove generated Podman Kubernetes configuration
+    # ---------------------------------------------------------
+
+    - name: Remove TFE Podman Kubernetes configuration
+      ansible.builtin.file:
+        path: "{{ tfe_kube_file }}"
+        state: absent
+
+    # ---------------------------------------------------------
+    # Remove TFE certificates
+    # ---------------------------------------------------------
+
+    - name: Remove TFE certificate directory
+      ansible.builtin.file:
+        path: "{{ tfe_install_dir }}/certs"
+        state: absent
+      when: tfe_delete_data
+
+    # ---------------------------------------------------------
+    # Remove TFE data
+    # ---------------------------------------------------------
+
+    - name: Delete TFE data directory
+      ansible.builtin.file:
+        path: "{{ tfe_install_dir }}/data"
+        state: absent
+      when: tfe_delete_data
+
+    # ---------------------------------------------------------
+    # Verify pod removal
+    # ---------------------------------------------------------
+
+    - name: Verify TFE pod has been removed
+      ansible.builtin.command:
+        cmd: podman pod exists "{{ tfe_pod_name }}"
+      register: tfe_pod_verify
+      failed_when: false
+      changed_when: false
+
+    - name: Display data removal status
+      ansible.builtin.debug:
+        msg: >-
+          TFE data and certificates were
+          {{ 'deleted' if tfe_delete_data else 'preserved' }}.
