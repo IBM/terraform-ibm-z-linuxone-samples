@@ -1,0 +1,312 @@
+---
+- name: Install Terraform Enterprise
+  hosts: tfe
+  become: true
+
+  collections:
+    - containers.podman
+
+  vars:
+    tfe_version: "{{ lookup('env', 'TFE_VERSION') }}"
+    tfe_hostname: "{{ lookup('env', 'TFE_HOSTNAME') }}"
+    tfe_operational_mode: "{{ lookup('env', 'TFE_OPERATIONAL_MODE') }}"
+    tfe_install_dir: "{{ lookup('env', 'TFE_INSTALL_DIR') }}"
+    tfe_http_port: "{{ lookup('env', 'TFE_HTTP_PORT') }}"
+    tfe_https_port: "{{ lookup('env', 'TFE_HTTPS_PORT') }}"
+    tfe_license: "{{ lookup('env', 'TFE_LICENSE') }}"
+    tfe_encryption_password: "{{ lookup('env', 'TFE_ENCRYPTION_PASSWORD') }}"
+    tfe_image: "{{ lookup('env', 'TFE_IMAGE') }}"
+    tfe_admin_https_port: "{{ lookup('env', 'TFE_ADMIN_HTTPS_PORT') }}"
+    tfe_pod_name: "{{ lookup('env', 'TFE_POD_NAME') }}"
+    tfe_container_name: "{{ lookup('env', 'TFE_CONTAINER_NAME') }}"
+    tfe_container_identifier: "{{ lookup('env', 'TFE_CONTAINER_IDENTIFIER') }}"
+
+  tasks:
+
+    # ---------------------------------------------------------
+    # Validate variables
+    # ---------------------------------------------------------
+
+    - name: Validate required environment variables
+      ansible.builtin.assert:
+        that:
+          - tfe_version | length > 0
+          - tfe_hostname | length > 0
+          - tfe_license | length > 0
+          - tfe_encryption_password | length > 0
+        fail_msg: >
+          Required TFE environment variables are missing.
+          Check tfe.env.
+
+    # ---------------------------------------------------------
+    # OS information
+    # ---------------------------------------------------------
+
+    - name: Display operating system
+      ansible.builtin.debug:
+        msg:
+          - "Distribution: {{ ansible_facts['distribution'] }}"
+          - "Version: {{ ansible_facts['distribution_version'] }}"
+          - "Architecture: {{ ansible_facts['architecture'] }}"
+
+    # ---------------------------------------------------------
+    # Install Podman
+    # ---------------------------------------------------------
+
+    - name: Install Podman
+      ansible.builtin.dnf:
+        name: podman
+        state: present
+
+    - name: Check Podman version
+      ansible.builtin.command:
+        cmd: podman --version
+      register: podman_version
+      changed_when: false
+
+    - name: Display Podman version
+      ansible.builtin.debug:
+        msg: "{{ podman_version.stdout }}"
+
+    # ---------------------------------------------------------
+    # Podman socket
+    # ---------------------------------------------------------
+
+    - name: Enable Podman socket
+      ansible.builtin.systemd:
+        name: podman.socket
+        enabled: true
+        state: started
+
+    # ---------------------------------------------------------
+    # Create directories
+    # ---------------------------------------------------------
+
+    - name: Create TFE directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - "{{ tfe_install_dir }}"
+        - "{{ tfe_install_dir }}/certs"
+        - "{{ tfe_install_dir }}/data"
+
+    # ---------------------------------------------------------
+    # TLS certificates
+    # ---------------------------------------------------------
+
+    - name: Copy TFE certificate
+      ansible.builtin.copy:
+        src: files/certs/cert.pem
+        dest: "{{ tfe_install_dir }}/certs/cert.pem"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Copy TFE private key
+      ansible.builtin.copy:
+        src: files/certs/key.pem
+        dest: "{{ tfe_install_dir }}/certs/key.pem"
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Copy TFE CA bundle
+      ansible.builtin.copy:
+        src: files/certs/bundle.pem
+        dest: "{{ tfe_install_dir }}/certs/bundle.pem"
+        owner: root
+        group: root
+        mode: "0644"
+
+    # ---------------------------------------------------------
+    # TFE Login
+    # ---------------------------------------------------------
+
+    - name: Login to HashiCorp container registry
+      containers.podman.podman_login:
+        registry: images.releases.hashicorp.com
+        username: terraform
+        password: "{{ tfe_license }}"
+      no_log: true
+
+    # ---------------------------------------------------------
+    # TFE image
+    # ---------------------------------------------------------
+
+    - name: Pull Terraform Enterprise image
+      containers.podman.podman_image:
+        name: "{{ tfe_image }}:{{ tfe_version }}"
+
+    # ---------------------------------------------------------
+    # Generate Podman configuration
+    # ---------------------------------------------------------
+
+    - name: Generate TFE Podman configuration
+      ansible.builtin.template:
+        src: tfe-kube.yml.j2
+        dest: "{{ tfe_install_dir }}/tfe-kube.yml"
+        owner: root
+        group: root
+        mode: "0600"
+
+    # ---------------------------------------------------------
+    # Start TFE
+    # ---------------------------------------------------------
+
+    - name: Check if TFE pod exists
+      ansible.builtin.command:
+        cmd: podman pod exists "{{ tfe_pod_name }}"
+      register: tfe_pod_exists
+      failed_when: false
+      changed_when: false
+
+
+    - name: Start Terraform Enterprise
+      ansible.builtin.command:
+        cmd: >
+          podman kube play
+          {{ tfe_install_dir }}/tfe-kube.yml
+      register: tfe_start
+      when: tfe_pod_exists.rc != 0
+
+    - name: Display TFE startup result
+      ansible.builtin.debug:
+        msg:
+          - "stdout: {{ tfe_start.stdout | default('TFE pod already exists; start task was skipped.') }}"
+          - "stderr: {{ tfe_start.stderr | default('') }}"
+
+# ---------------------------------------------------------
+# Check TFE container status
+# ---------------------------------------------------------
+
+    - name: Check TFE container status
+      ansible.builtin.command:
+        cmd: >
+          podman inspect
+          -f '{{ "{{.State.Status}}" }}'
+          "{{ tfe_container_name }}"
+      register: tfe_container_status
+      changed_when: false
+      retries: 10
+      delay: 5
+      until: tfe_container_status.stdout | trim == "running"
+
+
+    - name: Display TFE container status
+      ansible.builtin.debug:
+        msg: "TFE container status: {{ tfe_container_status.stdout | trim }}"
+
+# ---------------------------------------------------------
+# Check TFE container logs
+# ---------------------------------------------------------
+
+    - name: Get TFE container logs
+      ansible.builtin.command:
+        cmd: podman logs --tail 10 "{{ tfe_container_name }}"
+      register: tfe_logs
+      changed_when: false
+
+
+    - name: Display TFE container logs
+      ansible.builtin.debug:
+        msg: "{{ tfe_logs.stdout_lines }}"
+
+# ---------------------------------------------------------
+# Wait for HTTPS
+# ---------------------------------------------------------
+
+    - name: Wait for TFE HTTPS port 443
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 443
+        state: started
+        delay: 5
+        timeout: 100
+
+
+# ---------------------------------------------------------
+# Check HTTPS endpoint
+# ---------------------------------------------------------
+
+    - name: Check TFE HTTPS readiness
+      ansible.builtin.uri:
+        url: "https://127.0.0.1:443"
+        method: GET
+        validate_certs: false
+        follow_redirects: none
+        status_code:
+          - 200
+          - 301
+          - 302
+          - 401
+          - 403
+      register: tfe_health
+      retries: 30
+      delay: 10
+      until: tfe_health.status is defined
+
+
+# ---------------------------------------------------------
+# Check TFE application readiness
+# ---------------------------------------------------------
+
+    - name: Check TFE application readiness
+      ansible.builtin.command:
+        cmd: podman exec {{ tfe_container_name }} tfectl app health readiness
+      register: tfe_readiness
+      changed_when: false
+      failed_when: false
+      retries: 10
+      delay: 8
+      until:
+          - tfe_readiness.rc == 0
+          - "'Status: OK' in tfe_readiness.stdout"
+          - "'atlas        OK' in tfe_readiness.stdout"
+          - "'task-worker  OK' in tfe_readiness.stdout"
+
+    - name: Display TFE application readiness
+      ansible.builtin.debug:
+        msg: "{{ tfe_readiness.stdout | regex_replace('\\x1b\\[[0-9;]*m', '') | split('\n') }}"
+
+# ---------------------------------------------------------
+# Check for obvious startup errors
+# ---------------------------------------------------------
+
+    - name: Check TFE logs for startup errors
+      ansible.builtin.set_fact:
+        tfe_log_errors: >-
+          {{
+            tfe_logs.stdout_lines
+            | select('search', '(?i)(error|fatal|panic|failed|exception)')
+            | list
+          }}
+
+
+    - name: Display TFE log errors
+      ansible.builtin.debug:
+        msg: "{{ tfe_log_errors }}"
+      when: tfe_log_errors | length > 0
+
+# ---------------------------------------------------------
+# Check TFE HTTPS endpoint
+# ---------------------------------------------------------
+
+    - name: Display TFE health status
+      ansible.builtin.debug:
+        msg: "Terraform Enterprise is responding on HTTPS 443."
+    
+    - name: TFE installation completed
+      ansible.builtin.debug:
+        msg:
+          - "Terraform Enterprise {{ tfe_version }} is running."
+          - "HTTPS endpoint: https://{{ tfe_hostname }}"
+
+# ---------------------------------------------------------
+# Import Create Initial Admin tasks
+# ---------------------------------------------------------
+
+- import_playbook: create-tfe-initial-admin.yml

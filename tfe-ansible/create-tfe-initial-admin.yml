@@ -1,0 +1,95 @@
+---
+- name: Create Terraform Enterprise Initial Admin
+  hosts: tfe
+  become: true
+
+  vars:
+    tfe_hostname: "{{ lookup('env', 'TFE_HOSTNAME') }}"
+    tfe_install_dir: "{{ lookup('env', 'TFE_INSTALL_DIR') }}"
+    tfe_container_name: "{{ lookup('env', 'TFE_CONTAINER_NAME') }}"
+    tfe_admin_username: "{{ lookup('env', 'TFE_ADMIM_USERNAME') }}"
+    tfe_admin_email: "{{ lookup('env', 'TFE_ADMIM_EMAIL') }}"
+    tfe_admin_password: "{{ lookup('env', 'TFE_ADMIM_PASSWORD') }}"
+    
+
+  tasks:
+
+    # ---------------------------------------------------------
+    # Check whether admin has already been created
+    # ---------------------------------------------------------
+
+    - name: Check initial admin marker
+      ansible.builtin.stat:
+        path: "{{ tfe_install_dir }}/data/.initial-admin-created"
+      register: tfe_admin_marker
+
+
+    # ---------------------------------------------------------
+    # Get Initial Admin Creation Token
+    # ---------------------------------------------------------
+
+    - name: Get TFE Initial Admin Creation Token
+      ansible.builtin.command:
+        cmd: >
+          podman exec {{ tfe_container_name }}
+          tfectl admin token
+      register: tfe_iact_token
+      changed_when: false
+      no_log: true
+      when: not tfe_admin_marker.stat.exists
+
+
+    # ---------------------------------------------------------
+    # Create initial admin
+    # ---------------------------------------------------------
+
+    - name: Create TFE initial administrator
+      ansible.builtin.uri:
+        url: https://{{ tfe_hostname }}/admin/initial-admin-user?token={{ tfe_iact_token.stdout | trim }}
+        method: POST
+        headers:
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          username: "{{ tfe_admin_username }}"
+          email: "{{ tfe_admin_email }}"
+          password: "{{ tfe_admin_password }}"
+        validate_certs: false
+        status_code: 200
+      register: tfe_admin_creation
+      no_log: true
+      when: not tfe_admin_marker.stat.exists
+
+
+    # ---------------------------------------------------------
+    # Create marker
+    # ---------------------------------------------------------
+
+    - name: Mark initial admin as created
+      ansible.builtin.file:
+        path: "{{ tfe_install_dir }}/data/.initial-admin-created"
+        state: touch
+        owner: root
+        group: root
+        mode: "0600"
+      when:
+        - not tfe_admin_marker.stat.exists
+        - tfe_admin_creation.status == 200
+
+
+    # ---------------------------------------------------------
+    # Display result
+    # ---------------------------------------------------------
+
+    - name: Display admin creation status
+      ansible.builtin.debug:
+        msg: "Terraform Enterprise initial administrator created successfully."
+      when:
+        - tfe_admin_creation is defined
+        - tfe_admin_creation.status == 200
+
+
+    - name: Display admin already exists
+      ansible.builtin.debug:
+        msg: "Terraform Enterprise initial administrator already exists. Skipping creation."
+      when: tfe_admin_marker.stat.exists
