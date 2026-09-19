@@ -1,0 +1,97 @@
+---
+- name: TFE - Deploy
+  hosts: tfe
+  become: true
+
+  vars_files:
+    - ../vars/secrets.yml
+
+  tasks:
+
+    - name: Start Terraform Enterprise
+      ansible.builtin.command:
+        cmd: podman kube play {{ tfe_install_dir }}/tfe-pod.yml
+      register: kube_play
+
+    - name: Display startup output
+      ansible.builtin.debug:
+        var: kube_play.stdout_lines
+
+    # ======================================================
+    # Fail fast: confirm the container is actually running
+    # before waiting. If it exited immediately (e.g. config
+    # error) this surfaces the problem right away instead of
+    # silently waiting 30 minutes.
+    # ======================================================
+
+    - name: Confirm container is running
+      ansible.builtin.shell:
+        cmd: >
+          podman inspect {{ tfe_container_name }}
+          --format '{{ "{{.State.Status}}" }}'
+      register: container_status
+      retries: 5
+      delay: 5
+      until: container_status.stdout.strip() == "running"
+      changed_when: false
+      failed_when: container_status.stdout.strip() in ["exited", "stopped"]
+
+    # ======================================================
+    # Wait for readiness with progress output every 30s.
+    # Vault HA lock acquisition on s390x takes ~15 minutes,
+    # so we allow up to 30 minutes total (60 x 30s).
+    # Each retry prints which services are still pending
+    # so you can see progress instead of a silent wait.
+    # ======================================================
+
+    - name: Wait for TFE readiness
+      ansible.builtin.shell:
+        cmd: >
+          podman exec {{ tfe_container_name }}
+          tfectl app health readiness
+          | sed 's/\x1b\[[0-9;]*m//g'
+      register: tfe_readiness
+      retries: 60
+      delay: 30
+      until: tfe_readiness.rc == 0
+      changed_when: false
+      failed_when: false   # let the retry logic handle failures
+
+    # ======================================================
+    # After each retry, show which checks are still failing
+    # so progress is visible during the long Vault startup.
+    # ======================================================
+
+    - name: Show readiness progress
+      ansible.builtin.debug:
+        msg: >-
+          Readiness attempt {{ tfe_readiness.attempts | default(1) }}/60 —
+          {{ tfe_readiness.stdout_lines | default(['(no output yet)']) | join(' | ') }}
+      when: tfe_readiness.rc != 0
+
+    # ======================================================
+    # Hard fail if readiness never passed after all retries.
+    # Print the last container logs to help diagnose.
+    # ======================================================
+
+    - name: Collect last logs if readiness timed out
+      ansible.builtin.shell:
+        cmd: >
+          podman logs --tail=50 {{ tfe_container_name }} 2>&1
+          | grep -iE "error|fail|fatal|exit"
+      register: tfe_last_logs
+      changed_when: false
+      when: tfe_readiness.rc != 0
+      failed_when: false
+
+    - name: Fail with diagnostics if TFE did not become ready
+      ansible.builtin.fail:
+        msg: |
+          TFE did not become ready after 30 minutes.
+          Last error lines from container logs:
+          {{ tfe_last_logs.stdout | default('(no logs captured)') }}
+      when: tfe_readiness.rc != 0
+
+    - name: Display TFE readiness
+      ansible.builtin.debug:
+        var: tfe_readiness.stdout_lines

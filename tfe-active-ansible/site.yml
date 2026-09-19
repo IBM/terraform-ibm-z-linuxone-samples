@@ -1,0 +1,14 @@
+---
+- import_playbook: playbooks/precheck.yml
+
+- import_playbook: playbooks/prepare.yml
+
+- import_playbook: playbooks/load-image.yml
+
+- import_playbook: playbooks/configure.yml
+
+- import_playbook: playbooks/deploy.yml
+
+- import_playbook: playbooks/validate.yml
+
+- import_playbook: playbooks/admin-user.yml

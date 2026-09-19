@@ -1,0 +1,155 @@
+---
+apiVersion: "v1"
+kind: "Pod"
+metadata:
+  labels:
+    app: "terraform-enterprise"
+  name: "terraform-enterprise"
+spec:
+  containers:
+  - env:
+
+    # ====================================================
+    # TFE
+    # ====================================================
+    - name: "TFE_LICENSE"
+      value: "{{ tfe_license }}"
+    - name: "TFE_HOSTNAME"
+      value: "{{ tfe_hostname }}"
+    - name: "TFE_OPERATIONAL_MODE"
+      value: "{{ tfe_operational_mode }}"
+    - name: "TFE_ENCRYPTION_PASSWORD"
+      value: "{{ tfe_encryption_password }}"
+    - name: "TFE_HTTP_PORT"
+      value: "{{ tfe_http_port | string }}"
+    - name: "TFE_HTTPS_PORT"
+      value: "{{ tfe_https_port | string }}"
+
+    # ====================================================
+    # TLS
+    # ====================================================
+    - name: "TFE_TLS_CERT_FILE"
+      value: "{{ tfe_tls_cert_file }}"
+    - name: "TFE_TLS_KEY_FILE"
+      value: "{{ tfe_tls_key_file }}"
+    - name: "TFE_TLS_CA_BUNDLE_FILE"
+      value: "{{ tfe_tls_ca_bundle_file }}"
+
+    # ====================================================
+    # PostgreSQL
+    # ====================================================
+    - name: "TFE_DATABASE_HOST"
+      value: "{{ postgres_host }}:{{ postgres_port }}"
+    - name: "TFE_DATABASE_NAME"
+      value: "{{ postgres_database }}"
+    - name: "TFE_DATABASE_USER"
+      value: "{{ postgres_username }}"
+    - name: "TFE_DATABASE_PASSWORD"
+      value: "{{ postgres_password }}"
+    - name: "TFE_DATABASE_PARAMETERS"
+      value: "{{ postgres_parameters }}"
+
+    # ====================================================
+    # S3 / MinIO
+    # ====================================================
+    - name: "TFE_OBJECT_STORAGE_TYPE"
+      value: "s3"
+    - name: "TFE_OBJECT_STORAGE_S3_ENDPOINT"
+      value: "{{ minio_endpoint }}"
+    - name: "TFE_OBJECT_STORAGE_S3_BUCKET"
+      value: "{{ minio_bucket }}"
+    - name: "TFE_OBJECT_STORAGE_S3_REGION"
+      value: "{{ minio_region }}"
+    - name: "TFE_OBJECT_STORAGE_S3_ACCESS_KEY_ID"
+      value: "{{ minio_access_key }}"
+    - name: "TFE_OBJECT_STORAGE_S3_SECRET_ACCESS_KEY"
+      value: "{{ minio_secret_key }}"
+    - name: "TFE_OBJECT_STORAGE_S3_USE_PATH_STYLE"
+      value: "true"
+
+    # ====================================================
+    # Redis
+    # ====================================================
+    - name: "TFE_REDIS_HOST"
+      value: "{{ redis_host }}:{{ redis_port }}"
+    - name: "TFE_REDIS_USE_AUTH"
+      value: "{{ redis_use_auth | bool | lower }}"
+    - name: "TFE_REDIS_USE_TLS"
+      value: "{{ redis_use_tls | bool | lower }}"
+{% if redis_use_auth %}
+    - name: "TFE_REDIS_PASSWORD"
+      value: "{{ redis_password }}"
+{% endif %}
+
+    # ====================================================
+    # Vault
+    # ====================================================
+    # If using the default internal vault, this should be the private routable
+    # IP address of the node itself.
+    - name: "TFE_VAULT_CLUSTER_ADDRESS"
+      value: "{{ tfe_vault_cluster_address }}"
+
+    # ====================================================
+    # Terraform execution
+    # ====================================================
+    - name: "TFE_RUN_PIPELINE_DRIVER"
+      value: "{{ tfe_run_pipeline_driver }}"
+    - name: "TFE_DISK_CACHE_PATH"
+      value: "{{ tfe_disk_cache_path }}"
+    - name: "TFE_DISK_CACHE_VOLUME_NAME"
+      value: "{{ tfe_disk_cache_volume_name }}"
+
+    image: "{{ tfe_image }}"
+    name: "{{ tfe_container_identifier }}"
+    ports:
+    - containerPort: {{ tfe_http_port }}
+      hostPort: {{ tfe_http_host_port }}
+    - containerPort: {{ tfe_https_port }}
+      hostPort: {{ tfe_https_host_port }}
+    - containerPort: {{ tfe_vault_port }}
+      hostPort: {{ tfe_vault_port }}
+    - containerPort: 9090
+      hostPort: 9090
+    securityContext:
+      capabilities:
+        add:
+        - "CAP_IPC_LOCK"
+        - "NET_BIND_SERVICE"
+      readOnlyRootFilesystem: true
+      seLinuxOptions:
+        type: "spc_t"
+    volumeMounts:
+    - mountPath: "/etc/ssl/private/terraform-enterprise"
+      name: "certs"
+    - mountPath: "/run"
+      name: "run"
+    - mountPath: "/tmp"
+      name: "tmp"
+    - mountPath: "/var/log/terraform-enterprise"
+      name: "log"
+    - mountPath: "/var/run/docker.sock"
+      name: "docker-sock"
+    - mountPath: "{{ tfe_disk_cache_path }}/terraform"
+      name: "terraform-enterprise-cache-pvc"
+  restartPolicy: "Never"
+  volumes:
+  - hostPath:
+      path: "{{ tfe_install_dir }}/certs"
+      type: "Directory"
+    name: "certs"
+  - emptyDir:
+      medium: "Memory"
+    name: "run"
+  - emptyDir:
+      medium: "Memory"
+    name: "tmp"
+  - emptyDir:
+      medium: "Memory"
+    name: "log"
+  - hostPath:
+      path: "/run/podman/podman.sock"
+      type: "File"
+    name: "docker-sock"
+  - name: "terraform-enterprise-cache-pvc"
+    persistentVolumeClaim:
+      claimName: "{{ tfe_disk_cache_volume_name }}"

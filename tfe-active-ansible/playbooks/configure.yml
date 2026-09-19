@@ -1,0 +1,101 @@
+---
+- name: TFE - Configure
+  hosts: tfe
+  become: true
+
+  vars_files:
+    - ../vars/secrets.yml
+
+  tasks:
+
+    # ======================================================
+    # TLS - copy from local files/certs/<inventory_hostname>/
+    # ======================================================
+
+    - name: Copy TLS certificate
+      ansible.builtin.copy:
+        src: "../files/certs/{{ inventory_hostname }}/cert.pem"
+        dest: "{{ tfe_install_dir }}/certs/cert.pem"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Copy TLS private key
+      ansible.builtin.copy:
+        src: "../files/certs/{{ inventory_hostname }}/key.pem"
+        dest: "{{ tfe_install_dir }}/certs/key.pem"
+        owner: root
+        group: root
+        mode: "0640"
+
+    - name: Copy CA bundle
+      ansible.builtin.copy:
+        src: "../files/certs/{{ inventory_hostname }}/bundle.pem"
+        dest: "{{ tfe_install_dir }}/certs/bundle.pem"
+        owner: root
+        group: root
+        mode: "0644"
+
+    # ======================================================
+    # Verify TLS files
+    # ======================================================
+
+    - name: Check TLS certificate
+      ansible.builtin.stat:
+        path: "{{ tfe_install_dir }}/certs/cert.pem"
+      register: tls_certificate
+
+    - name: Check TLS private key
+      ansible.builtin.stat:
+        path: "{{ tfe_install_dir }}/certs/key.pem"
+      register: tls_key
+
+    - name: Verify TLS files
+      ansible.builtin.assert:
+        that:
+          - tls_certificate.stat.exists
+          - tls_key.stat.exists
+
+    # ======================================================
+    # Generate Pod manifest
+    # ======================================================
+
+    - name: Render TFE pod manifest
+      ansible.builtin.template:
+        src: "../templates/compose.yml.j2"
+        dest: "{{ tfe_install_dir }}/tfe-pod.yml"
+        owner: root
+        group: root
+        mode: "0600"
+
+    # ======================================================
+    # Check generated configuration
+    # ======================================================
+
+    - name: Validate pod manifest (YAML syntax check)
+      ansible.builtin.shell:
+        cmd: >
+          python3 -c
+          'import yaml, sys; yaml.safe_load(sys.stdin)'
+          < {{ tfe_install_dir }}/tfe-pod.yml
+      register: kube_validation
+      changed_when: false
+
+    - name: Display pod manifest validation
+      ansible.builtin.debug:
+        msg: "TFE pod manifest is valid"
+
+    # ======================================================
+    # Display non-secret configuration
+    # ======================================================
+
+    - name: Display TFE configuration
+      ansible.builtin.debug:
+        msg:
+          - "TFE hostname : {{ tfe_hostname }}"
+          - "Mode         : {{ tfe_operational_mode }}"
+          - "Image        : {{ tfe_image }}"
+          - "PostgreSQL   : {{ postgres_host }}:{{ postgres_port }}"
+          - "Redis        : {{ redis_host }}:{{ redis_port }}"
+          - "MinIO        : {{ minio_endpoint }}"
+          - "MinIO bucket : {{ minio_bucket }}"

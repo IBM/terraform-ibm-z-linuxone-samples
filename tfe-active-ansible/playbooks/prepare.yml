@@ -1,0 +1,205 @@
+---
+- name: TFE - Prepare host
+  hosts: tfe
+  become: true
+
+  vars_files:
+    - ../vars/secrets.yml
+
+  tasks:
+
+    # ======================================================
+    # Packages
+    # ======================================================
+
+    - name: Install required packages
+      ansible.builtin.dnf:
+        name:
+          - podman
+          - curl
+          - tar
+          - haproxy
+          - rsyslog
+        state: present
+
+    # ======================================================
+    # Verify Podman
+    # ======================================================
+
+    - name: Get Podman version
+      ansible.builtin.command:
+        cmd: podman --version
+      register: podman_version
+      changed_when: false
+
+    - name: Display Podman version
+      ansible.builtin.debug:
+        msg: "{{ podman_version.stdout }}"
+
+    # ======================================================
+    # Directories
+    # ======================================================
+
+    - name: Create TFE installation directory
+      ansible.builtin.file:
+        path: "{{ tfe_install_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Create TFE config directory
+      ansible.builtin.file:
+        path: "{{ tfe_install_dir }}/config"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Create TFE certificate directory
+      ansible.builtin.file:
+        path: "{{ tfe_install_dir }}/certs"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Create Podman volume for TFE task-worker cache
+      ansible.builtin.command:
+        cmd: podman volume create {{ tfe_disk_cache_volume_name }}
+      register: vol_create
+      changed_when: vol_create.rc == 0
+      failed_when: vol_create.rc != 0 and 'already exists' not in vol_create.stderr
+
+    # ======================================================
+    # Podman socket
+    # ======================================================
+
+    - name: Enable Podman API socket
+      ansible.builtin.systemd:
+        name: podman.socket
+        enabled: true
+        state: started
+
+    - name: Verify Podman socket
+      ansible.builtin.stat:
+        path: /run/podman/podman.sock
+      register: podman_socket
+
+    - name: Verify Podman socket exists
+      ansible.builtin.assert:
+        that:
+          - podman_socket.stat.exists
+        fail_msg: "Podman socket was not created"
+
+    # ======================================================
+    # HAProxy configuration
+    # ======================================================
+
+    - name: Deploy HAProxy configuration
+      ansible.builtin.template:
+        src: "../templates/haproxy.cfg.j2"
+        dest: /etc/haproxy/haproxy.cfg
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload HAProxy
+
+    - name: Enable and start HAProxy
+      ansible.builtin.systemd:
+        name: haproxy
+        enabled: true
+        state: started
+
+    # ======================================================
+    # HAProxy logging — configure rsyslog to receive and
+    # write HAProxy logs to /var/log/haproxy.log
+    # ======================================================
+
+    - name: Deploy HAProxy rsyslog configuration
+      ansible.builtin.template:
+        src: "../templates/rsyslog-haproxy.conf.j2"
+        dest: /etc/rsyslog.d/haproxy.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart rsyslog
+
+    - name: Enable and start rsyslog
+      ansible.builtin.systemd:
+        name: rsyslog
+        enabled: true
+        state: started
+
+    - name: Create HAProxy log file with correct permissions
+      ansible.builtin.file:
+        path: /var/log/haproxy.log
+        state: touch
+        owner: root
+        group: root
+        mode: "0644"
+        modification_time: preserve
+        access_time: preserve
+
+    # ======================================================
+    # Firewall
+    # ======================================================
+
+    - name: Open TFE HTTP port
+      ansible.posix.firewalld:
+        port: "{{ tfe_http_port }}/tcp"
+        permanent: true
+        immediate: true
+        state: enabled
+      when: ansible_facts.services["firewalld.service"] is defined
+
+    - name: Open TFE HTTPS port
+      ansible.posix.firewalld:
+        port: "{{ tfe_https_port }}/tcp"
+        permanent: true
+        immediate: true
+        state: enabled
+      when: ansible_facts.services["firewalld.service"] is defined
+
+    - name: Open TFE Vault cluster port
+      ansible.posix.firewalld:
+        port: "{{ tfe_vault_port }}/tcp"
+        permanent: true
+        immediate: true
+        state: enabled
+      when: ansible_facts.services["firewalld.service"] is defined
+
+    - name: Open HTTP port (HAProxy redirect)
+      ansible.posix.firewalld:
+        port: "80/tcp"
+        permanent: true
+        immediate: true
+        state: enabled
+      when: ansible_facts.services["firewalld.service"] is defined
+
+    - name: Open HTTPS port (HAProxy frontend)
+      ansible.posix.firewalld:
+        port: "443/tcp"
+        permanent: true
+        immediate: true
+        state: enabled
+      when: ansible_facts.services["firewalld.service"] is defined
+
+    - name: Open HAProxy stats port
+      ansible.posix.firewalld:
+        port: "8404/tcp"
+        permanent: true
+        immediate: true
+        state: enabled
+      when: ansible_facts.services["firewalld.service"] is defined
+
+  handlers:
+    - name: Reload HAProxy
+      ansible.builtin.systemd:
+        name: haproxy
+        state: reloaded
+
+    - name: Restart rsyslog
+      ansible.builtin.systemd:
+        name: rsyslog
+        state: restarted

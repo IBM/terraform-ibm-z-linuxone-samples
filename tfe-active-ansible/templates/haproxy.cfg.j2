@@ -1,0 +1,69 @@
+global
+    log         127.0.0.1 local2
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+    stats socket /var/lib/haproxy/stats
+    ssl-default-bind-ciphers PROFILE=SYSTEM
+    ssl-default-server-ciphers PROFILE=SYSTEM
+
+defaults
+    mode                    http
+    log                     global
+    option                  httplog
+    option                  dontlognull
+    option                  http-server-close
+    option                  forwardfor except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    10s
+    timeout queue           1m
+    timeout connect         10s
+    timeout client          1m
+    timeout server          1m
+    timeout http-keep-alive 10s
+    timeout check           10s
+    maxconn                 3000
+
+#---------------------------------------------------------------------
+# TFE - HTTP frontend (redirects to HTTPS)
+#---------------------------------------------------------------------
+frontend tfe_http
+    bind *:80
+    mode http
+    redirect scheme https code 301
+
+#---------------------------------------------------------------------
+# TFE - HTTPS frontend (TCP passthrough — TFE handles TLS termination)
+#---------------------------------------------------------------------
+frontend tfe_https
+    bind *:443
+    mode tcp
+    option tcplog
+    default_backend tfe_nodes
+
+#---------------------------------------------------------------------
+# TFE backend nodes
+# No tcp-check: plain TCP health checks fail against TLS backends.
+# TFE health is verified separately via tfectl app health readiness.
+#---------------------------------------------------------------------
+backend tfe_nodes
+    mode tcp
+    balance roundrobin
+    server tfe01 127.0.0.1:{{ tfe_https_host_port }}
+
+    # tfe02 — uncomment when second active-active node is added
+    # server tfe02 <TFE02_IP>:{{ tfe_https_host_port }}
+
+#---------------------------------------------------------------------
+# HAProxy stats — http://{{ tfe_hostname }}:8404/stats
+#---------------------------------------------------------------------
+listen stats
+    bind *:8404
+    mode http
+    stats enable
+    stats uri /stats
+    stats refresh 10s

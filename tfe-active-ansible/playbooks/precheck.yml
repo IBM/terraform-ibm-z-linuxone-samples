@@ -1,0 +1,139 @@
+---
+- name: TFE - Precheck
+  hosts: tfe
+  become: true
+
+  vars_files:
+    - ../vars/secrets.yml
+
+  tasks:
+
+    # ======================================================
+    # Architecture
+    # ======================================================
+
+    - name: Get system architecture
+      ansible.builtin.command:
+        cmd: uname -m
+      register: architecture
+      changed_when: false
+
+    - name: Verify s390x architecture
+      ansible.builtin.assert:
+        that:
+          - architecture.stdout == "s390x"
+        fail_msg: >
+          Terraform Enterprise s390x installation requires s390x.
+          Detected: {{ architecture.stdout }}
+
+    # ======================================================
+    # OS
+    # ======================================================
+
+    - name: Read OS release
+      ansible.builtin.command:
+        cmd: cat /etc/redhat-release
+      register: os_release
+      changed_when: false
+
+    - name: Display OS
+      ansible.builtin.debug:
+        msg: "{{ os_release.stdout }}"
+
+    # ======================================================
+    # Podman
+    # ======================================================
+
+    - name: Check Podman
+      ansible.builtin.command:
+        cmd: podman --version
+      register: podman_version
+      changed_when: false
+      failed_when: false
+
+    - name: Display Podman version
+      ansible.builtin.debug:
+        var: podman_version.stdout
+
+    # ======================================================
+    # Image archive
+    # ======================================================
+
+    - name: Check TFE image archive
+      ansible.builtin.stat:
+        path: "{{ tfe_image_file }}"
+      register: tfe_image_archive
+
+    - name: Verify TFE image archive exists
+      ansible.builtin.assert:
+        that:
+          - tfe_image_archive.stat.exists
+          - tfe_image_archive.stat.size > 0
+        fail_msg:
+          "TFE image archive does not exist: {{ tfe_image_file }}"
+
+    # ======================================================
+    # PostgreSQL
+    # ======================================================
+
+    - name: Check PostgreSQL connectivity
+      ansible.builtin.wait_for:
+        host: "{{ postgres_host }}"
+        port: "{{ postgres_port }}"
+        timeout: 10
+        state: started
+
+    # ======================================================
+    # Redis
+    # ======================================================
+
+    - name: Check Redis connectivity
+      ansible.builtin.wait_for:
+        host: "{{ redis_host }}"
+        port: "{{ redis_port }}"
+        timeout: 10
+        state: started
+
+    # ======================================================
+    # MinIO
+    # ======================================================
+
+    - name: Check MinIO connectivity
+      ansible.builtin.wait_for:
+        host: "{{ minio_host }}"
+        port: "{{ minio_port }}"
+        timeout: 10
+        state: started
+
+    # ======================================================
+    # Disk space
+    # ======================================================
+
+    - name: Check available disk space
+      ansible.builtin.shell:
+        cmd: |
+          df -Pk {{ tfe_install_dir | dirname }} |
+          awk 'NR==2 {print $4}'
+      register: available_disk
+      changed_when: false
+
+    - name: Display available disk space
+      ansible.builtin.debug:
+        msg: "Available disk MB: {{ (available_disk.stdout | int // 1024) }}"
+
+    # ======================================================
+    # Summary
+    # ======================================================
+
+    - name: Precheck successful
+      ansible.builtin.debug:
+        msg:
+          - "======================================"
+          - "TFE PRECHECK SUCCESSFUL"
+          - "======================================"
+          - "Architecture : {{ architecture.stdout }}"
+          - "PostgreSQL   : {{ postgres_host }}:{{ postgres_port }}"
+          - "Redis        : {{ redis_host }}:{{ redis_port }}"
+          - "MinIO        : {{ minio_endpoint }}"
+          - "Image        : {{ tfe_image_file }}"
+          - "======================================"

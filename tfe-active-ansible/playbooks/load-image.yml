@@ -1,0 +1,162 @@
+---
+- name: TFE - Load s390x image
+  hosts: tfe
+  become: true
+
+  vars_files:
+    - ../vars/secrets.yml
+
+  tasks:
+
+    # ======================================================
+    # Verify archive
+    # ======================================================
+
+    - name: Check image archive
+      ansible.builtin.stat:
+        path: "{{ tfe_image_file }}"
+      register: image_archive
+
+    - name: Require image archive
+      ansible.builtin.assert:
+        that:
+          - image_archive.stat.exists
+          - image_archive.stat.size > 0
+        fail_msg: >
+          Image archive not found:
+          {{ tfe_image_file }}
+
+    # ======================================================
+    # Check existing image
+    # ======================================================
+
+    - name: Check whether target image exists
+      ansible.builtin.command:
+        cmd: "podman image exists {{ tfe_image }}"
+      register: target_image_exists
+      changed_when: false
+      failed_when: false
+
+    # ======================================================
+    # Load image
+    # ======================================================
+
+    - name: Load TFE image
+      ansible.builtin.command:
+        cmd: "podman load -i {{ tfe_image_file }}"
+      register: podman_load
+      when: target_image_exists.rc != 0
+
+    - name: Display podman load output
+      ansible.builtin.debug:
+        var: podman_load.stdout_lines
+      when: target_image_exists.rc != 0
+
+    # ======================================================
+    # Retag image if loaded without a name/tag
+    # ======================================================
+
+    - name: Get image ID from archive
+      ansible.builtin.command:
+        cmd: >
+          podman load -i {{ tfe_image_file }} --quiet
+      register: loaded_image_id
+      changed_when: false
+      failed_when: false
+      when: target_image_exists.rc != 0
+
+    - name: Tag loaded image with expected name
+      ansible.builtin.command:
+        cmd: "podman tag {{ loaded_image_id.stdout | regex_replace('^.*sha256:', '') }} {{ tfe_image }}"
+      when:
+        - target_image_exists.rc != 0
+        - loaded_image_id.stdout | length > 0
+
+    # ======================================================
+    # Discover loaded image
+    # ======================================================
+
+    - name: Get loaded TFE images
+      ansible.builtin.shell:
+        cmd: |
+          podman images --format '{{ '{{.Repository}}:{{.Tag}}' }}' |
+          grep -Ei 'terraform|enterprise|tfe'
+      register: loaded_images
+      changed_when: false
+      failed_when: false
+
+    - name: Display loaded images
+      ansible.builtin.debug:
+        var: loaded_images.stdout_lines
+
+    # ======================================================
+    # Verify image exists
+    # ======================================================
+
+    - name: Check target image again
+      ansible.builtin.command:
+        cmd: "podman image exists {{ tfe_image }}"
+      register: final_image_exists
+      changed_when: false
+      failed_when: false
+
+    # ======================================================
+    # If vendor image has another tag
+    # ======================================================
+
+    - name: Fail with image information
+      ansible.builtin.fail:
+        msg: |
+          The expected image {{ tfe_image }} does not exist.
+
+          podman load succeeded, but the image has a different
+          repository/tag.
+
+          Images currently containing terraform/tfe:
+          {{ loaded_images.stdout }}
+          
+          Please set tfe_loaded_image in group_vars/tfe.yml
+          to the image shown by "podman images".
+      when: final_image_exists.rc != 0
+
+    # ======================================================
+    # Verify architecture
+    # ======================================================
+
+    - name: Inspect image architecture
+      ansible.builtin.command:
+        cmd: >
+          podman image inspect {{ tfe_image }}
+          --format '{{ '{{.Architecture}}/{{.Os}}' }}'
+      register: image_architecture
+      changed_when: false
+
+    - name: Require s390x Linux image
+      ansible.builtin.assert:
+        that:
+          - image_architecture.stdout == "s390x/linux"
+        fail_msg: >
+          Wrong image architecture:
+          {{ image_architecture.stdout }}
+
+          Expected:
+          s390x/linux
+
+    # ======================================================
+    # Image information
+    # ======================================================
+
+    - name: Get image ID
+      ansible.builtin.command:
+        cmd: >
+          podman image inspect {{ tfe_image }}
+          --format '{{ '{{.Id}}' }}'
+      register: image_id
+      changed_when: false
+
+    - name: Display image information
+      ansible.builtin.debug:
+        msg:
+          - "TFE image     : {{ tfe_image }}"
+          - "Architecture  : {{ image_architecture.stdout }}"
+          - "Image ID      : {{ image_id.stdout }}"

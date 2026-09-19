@@ -1,0 +1,391 @@
+
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HAProxy Install &amp; Configure — TFE on s390x</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #1f2328;
+    background: #ffffff;
+    padding: 40px 20px 60px;
+  }
+  .page { max-width: 760px; margin: 0 auto; }
+
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #57606a; font-size: 13px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
+
+  h2 { font-size: 15px; font-weight: 700; margin: 32px 0 12px; color: #1f2328; display: flex; align-items: center; gap: 10px; }
+  h2 .step-badge {
+    background: #3b82d4;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+    white-space: nowrap;
+  }
+
+  h3 { font-size: 13px; font-weight: 600; margin: 18px 0 6px; color: #1f2328; }
+
+  p { margin-bottom: 10px; color: #1f2328; }
+
+  pre {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 14px 16px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin-bottom: 12px;
+    white-space: pre;
+  }
+
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 12px;
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+
+  .note {
+    background: #f7f8fa;
+    border-left: 3px solid #3b82d4;
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #57606a;
+  }
+
+  .warn {
+    background: #fffbf0;
+    border-left: 3px solid #d97706;
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #57606a;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+  th {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #1f2328;
+  }
+  td {
+    border: 1px solid #e5e7eb;
+    padding: 8px 12px;
+    color: #1f2328;
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: #f7f8fa; }
+
+  .divider { border: none; border-top: 1px solid #e5e7eb; margin: 28px 0; }
+
+  .footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+    font-size: 12px;
+    color: #57606a;
+  }
+
+  .arch-box {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 16px 20px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 1.8;
+    margin-bottom: 16px;
+    color: #1f2328;
+  }
+
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; }
+  .tag-blue { background: #dbeafe; color: #1d4ed8; }
+  .tag-green { background: #dcfce7; color: #15803d; }
+  .tag-orange { background: #ffedd5; color: #c2410c; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>HAProxy — Install &amp; Configure</h1>
+  <div class="subtitle">
+    Target host: <code>tfe-s390x.dev.fyre.ibm.com</code>  · 
+    Architecture: <code>s390x (IBM Z)</code>  · 
+    Purpose: Load balancer for Terraform Enterprise (active-active)
+  </div>
+
+  
+  <h2><span class="step-badge">OVERVIEW</span> Traffic Architecture</h2>
+  <div class="arch-box">
+Client (HTTPS :443 / HTTP :80)
+        │
+        ▼
+┌─────────────────────────────────┐
+│  HAProxy  tfe-s390x:443 / :80   │  ← this guide
+│  TCP passthrough (mode tcp)     │
+└─────────────────┬───────────────┘
+                  │
+        ┌─────────┴──────────┐
+        ▼                    ▼
+  TFE container :443    (tfe02 — future)
+  127.0.0.1:443
+        │
+        ▼
+  TFE handles TLS termination
+  </div>
+  <div class="note">HAProxy uses <strong>TCP passthrough</strong> — it does not terminate TLS. TFE handles its own certificates. No certs are needed on HAProxy.</div>
+
+  <hr class="divider" />
+
+  
+  <h2><span class="step-badge">STEP 1</span> Install HAProxy</h2>
+
+  <h3>RHEL / CentOS / Fedora (dnf)</h3>
+  <pre>dnf install -y haproxy</pre>
+
+  <h3>Verify installation</h3>
+  <pre>haproxy -v</pre>
+
+  <h3>Enable and start the service</h3>
+  <pre>systemctl enable haproxy
+systemctl start haproxy
+systemctl status haproxy</pre>
+
+  <hr class="divider" />
+
+  
+  <h2><span class="step-badge">STEP 2</span> Back Up the Default Config</h2>
+  <pre>cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.bak</pre>
+  <div class="note">Always keep a backup before modifying. Restore with: <code>cp /etc/haproxy/haproxy.cfg.bak /etc/haproxy/haproxy.cfg</code></div>
+
+  <hr class="divider" />
+
+  
+  <h2><span class="step-badge">STEP 3</span> Configure HAProxy for TFE</h2>
+
+  <p>Edit <code>/etc/haproxy/haproxy.cfg</code> and add the TFE sections. The key additions are highlighted below.</p>
+
+  <h3>Full configuration file</h3>
+  <pre>#---------------------------------------------------------------------
+# Global settings
+#---------------------------------------------------------------------
+global
+    log         127.0.0.1 local2
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+    stats socket /var/lib/haproxy/stats
+    ssl-default-bind-ciphers PROFILE=SYSTEM
+    ssl-default-server-ciphers PROFILE=SYSTEM
+
+#---------------------------------------------------------------------
+# Defaults
+#---------------------------------------------------------------------
+defaults
+    mode                    http
+    log                     global
+    option                  httplog
+    option                  dontlognull
+    option http-server-close
+    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    10s
+    timeout queue           1m
+    timeout connect         10s
+    timeout client          1m
+    timeout server          1m
+    timeout http-keep-alive 10s
+    timeout check           10s
+    maxconn                 3000
+
+#---------------------------------------------------------------------
+# TFE — HTTP frontend (redirect to HTTPS)
+#---------------------------------------------------------------------
+frontend tfe_http
+    bind *:80
+    mode http
+    redirect scheme https code 301
+
+#---------------------------------------------------------------------
+# TFE — HTTPS frontend (TCP passthrough)
+#---------------------------------------------------------------------
+frontend tfe_https
+    bind *:443
+    mode tcp
+    option tcplog
+    default_backend tfe_nodes
+
+#---------------------------------------------------------------------
+# TFE — backend nodes
+#---------------------------------------------------------------------
+backend tfe_nodes
+    mode tcp
+    balance roundrobin
+    option tcp-check
+
+    # tfe01 — active node (same host as HAProxy)
+    server tfe01 127.0.0.1:443 check
+
+    # tfe02 — uncomment when second node is ready
+    # server tfe02 &lt;TFE02_IP&gt;:443 check
+
+#---------------------------------------------------------------------
+# HAProxy stats page
+# Access: http://tfe-s390x.dev.fyre.ibm.com:8404/stats
+#---------------------------------------------------------------------
+listen stats
+    bind *:8404
+    mode http
+    stats enable
+    stats uri /stats
+    stats refresh 10s</pre>
+
+  <div class="warn"><strong>Note on mode tcp vs http:</strong> The <code>defaults</code> block sets <code>mode http</code>. The TFE frontend and backend explicitly declare <code>mode tcp</code> to override this — required for TLS passthrough.</div>
+
+  <hr class="divider" />
+
+  
+  <h2><span class="step-badge">STEP 4</span> Validate and Restart HAProxy</h2>
+
+  <h3>Check configuration syntax</h3>
+  <pre>haproxy -c -f /etc/haproxy/haproxy.cfg</pre>
+  <p>Expected output: <code>Configuration file is valid</code></p>
+
+  <h3>Restart HAProxy</h3>
+  <pre>systemctl restart haproxy
+systemctl status haproxy</pre>
+
+  <h3>Confirm HAProxy is listening on all expected ports</h3>
+  <pre>ss -tlnp | grep haproxy</pre>
+
+  <p>Expected output:</p>
+  <pre>LISTEN  0  3000  0.0.0.0:80    0.0.0.0:*  users:(("haproxy",...))
+LISTEN  0  3000  0.0.0.0:443   0.0.0.0:*  users:(("haproxy",...))
+LISTEN  0  3000  0.0.0.0:8404  0.0.0.0:*  users:(("haproxy",...))
+LISTEN  0  3000  0.0.0.0:5000  0.0.0.0:*  users:(("haproxy",...))</pre>
+
+  <hr class="divider" />
+
+  
+  <h2><span class="step-badge">STEP 5</span> Open Firewall Ports</h2>
+
+  <h3>Open required ports</h3>
+  <pre>firewall-cmd --permanent --add-service=http      # port 80
+firewall-cmd --permanent --add-service=https     # port 443
+firewall-cmd --permanent --add-port=8404/tcp     # stats page
+firewall-cmd --reload</pre>
+
+  <h3>Verify open ports</h3>
+  <pre>firewall-cmd --list-ports
+firewall-cmd --list-services</pre>
+
+  <hr class="divider" />
+
+  
+  <h2><span class="step-badge">STEP 6</span> Test and Validate</h2>
+
+  <table>
+    <thead>
+      <tr><th>Test</th><th>Command</th><th>Expected Result</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Stats page (local)</td>
+        <td><code>curl http://127.0.0.1:8404/stats</code></td>
+        <td>HTML stats page returned</td>
+      </tr>
+      <tr>
+        <td>Stats page (remote)</td>
+        <td><code>curl http://tfe-s390x.dev.fyre.ibm.com:8404/stats</code></td>
+        <td>HTML stats page returned</td>
+      </tr>
+      <tr>
+        <td>HTTPS via HAProxy</td>
+        <td><code>curl -vk https://tfe-s390x.dev.fyre.ibm.com/</code></td>
+        <td>TFE login page or 200/302 response</td>
+      </tr>
+      <tr>
+        <td>HTTP redirect</td>
+        <td><code>curl -v http://tfe-s390x.dev.fyre.ibm.com/</code></td>
+        <td><code>301 Moved Permanently</code> → HTTPS</td>
+      </tr>
+      <tr>
+        <td>HAProxy owns port 443</td>
+        <td><code>ss -tlnp | grep 443</code></td>
+        <td>haproxy listed as owner</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Watch live logs while testing</h3>
+  <pre># Terminal 1 — watch logs
+tail -f /var/log/haproxy.log
+
+# Terminal 2 — send a request
+curl -vk https://tfe-s390x.dev.fyre.ibm.com/</pre>
+
+  <hr class="divider" />
+
+  
+  <h2><span class="step-badge">STEP 7</span> Adding tfe02 Later (active-active)</h2>
+
+  <p>When the second TFE node is ready, add it to the backend in <code>/etc/haproxy/haproxy.cfg</code>:</p>
+  <pre>backend tfe_nodes
+    mode tcp
+    balance roundrobin
+    option tcp-check
+
+    server tfe01 127.0.0.1:443 check
+    server tfe02 &lt;TFE02_IP&gt;:443 check   # ← add this line</pre>
+
+  <p>Then reload HAProxy without dropping existing connections:</p>
+  <pre>haproxy -c -f /etc/haproxy/haproxy.cfg   # validate first
+systemctl reload haproxy                  # graceful reload</pre>
+
+  <hr class="divider" />
+
+  
+  <h2><span class="step-badge">REFERENCE</span> Port Summary</h2>
+  <table>
+    <thead>
+      <tr><th>Port</th><th>Protocol</th><th>Purpose</th><th>HAProxy Mode</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>80</td><td>HTTP</td><td>Redirect to HTTPS</td><td>http</td></tr>
+      <tr><td>443</td><td>HTTPS</td><td>TFE traffic (TCP passthrough)</td><td>tcp</td></tr>
+      <tr><td>8404</td><td>HTTP</td><td>HAProxy stats UI</td><td>http</td></tr>
+      <tr><td>5000</td><td>HTTP</td><td>Existing app (unchanged)</td><td>http</td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer">Made with IBM Bob</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# HAProxy rsyslog configuration
+# Receives HAProxy log messages on the local2 facility
+# and writes them to /var/log/haproxy.log
+
+# Accept syslog messages on UDP loopback (HAProxy sends here)
+$ModLoad imudp
+$UDPServerRun 514
+$UDPServerAddress 127.0.0.1
+
+# Write local2 facility (used by HAProxy) to dedicated log file
+local2.*    /var/log/haproxy.log
+
+# Prevent local2 messages from also appearing in /var/log/messages
+local2.*    ~

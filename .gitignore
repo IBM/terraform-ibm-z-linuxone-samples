@@ -4,3 +4,6 @@
 tfe-ansible/tfe.env
 tfe-ansible/files/certs/
 tfe-ansible/setup.env
+tfe-active-ansible/.env
+tfe-active-ansible/files/certs/
+tfe-active-ansible/setup.env

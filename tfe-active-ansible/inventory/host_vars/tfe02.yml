@@ -1,0 +1,5 @@
+vm2_ansible_host: "{{ lookup('env', 'VM2_ANSIBLE_HOST') }}"
+vm2_ansible_user: "{{ lookup('env', 'VM2_ANSIBLE_USER') }}"
+
+## this will be read from env file.
+vm2_ansible_password: "{{ lookup('env', 'VM2_ANSIBLE_PASSWORD') }}"
