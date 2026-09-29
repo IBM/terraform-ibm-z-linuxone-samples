@@ -7,3 +7,4 @@ tfe-ansible/setup.env
 tfe-active-ansible/.env
 tfe-active-ansible/files/certs/
 tfe-active-ansible/setup.env
+tfe-active-ansible/vars/secrets.yml
