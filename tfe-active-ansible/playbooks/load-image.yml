@@ -56,21 +56,12 @@
     # Retag image if loaded without a name/tag
     # ======================================================
 
-    - name: Get image ID from archive
-      ansible.builtin.command:
-        cmd: >
-          podman load -i {{ tfe_image_file }} --quiet
-      register: loaded_image_id
-      changed_when: false
-      failed_when: false
-      when: target_image_exists.rc != 0
-
     - name: Tag loaded image with expected name
       ansible.builtin.command:
-        cmd: "podman tag {{ loaded_image_id.stdout | regex_replace('^.*sha256:', '') }} {{ tfe_image }}"
+        cmd: "podman tag {{ podman_load.stdout | regex_replace('^.*sha256:', '') }} {{ tfe_image }}"
       when:
         - target_image_exists.rc != 0
-        - loaded_image_id.stdout | length > 0
+        - podman_load.stdout | length > 0
 
     # ======================================================
     # Discover loaded image

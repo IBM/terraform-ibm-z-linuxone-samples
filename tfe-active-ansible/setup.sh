@@ -9,7 +9,7 @@
 # What this script does:
 #   0. Loads configuration from setup.env and writes .env + vars/secrets.yml
 #   1. Locates a Python 3.9+ interpreter
-#   2. Creates (or reuses) the .ansible-env virtual environment
+#   2. Creates (or reuses) the .ansible-active-env virtual environment
 #   3. Upgrades pip and installs requirements.txt
 #   4. Activates the virtual environment (only when sourced)
 #   5. Reads inventory/hosts.yml, creates files/certs/<host>/ for every active

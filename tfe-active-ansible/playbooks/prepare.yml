@@ -143,7 +143,14 @@
 
     # ======================================================
     # Firewall
+    # service_facts must be gathered before the firewalld
+    # tasks so that ansible_facts.services is populated.
+    # The when condition also checks the service is running
+    # because immediate: true requires firewalld to be active.
     # ======================================================
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
 
     - name: Open TFE HTTP port
       ansible.posix.firewalld:
@@ -152,6 +159,7 @@
         immediate: true
         state: enabled
       when: ansible_facts.services["firewalld.service"] is defined
+            and ansible_facts.services["firewalld.service"].state == "running"
 
     - name: Open TFE HTTPS port
       ansible.posix.firewalld:
@@ -160,6 +168,7 @@
         immediate: true
         state: enabled
       when: ansible_facts.services["firewalld.service"] is defined
+            and ansible_facts.services["firewalld.service"].state == "running"
 
     - name: Open TFE Vault cluster port
       ansible.posix.firewalld:
@@ -168,6 +177,7 @@
         immediate: true
         state: enabled
       when: ansible_facts.services["firewalld.service"] is defined
+            and ansible_facts.services["firewalld.service"].state == "running"
 
     - name: Open HTTP port (HAProxy redirect)
       ansible.posix.firewalld:
@@ -176,6 +186,7 @@
         immediate: true
         state: enabled
       when: ansible_facts.services["firewalld.service"] is defined
+            and ansible_facts.services["firewalld.service"].state == "running"
 
     - name: Open HTTPS port (HAProxy frontend)
       ansible.posix.firewalld:
@@ -184,6 +195,7 @@
         immediate: true
         state: enabled
       when: ansible_facts.services["firewalld.service"] is defined
+            and ansible_facts.services["firewalld.service"].state == "running"
 
     - name: Open HAProxy stats port
       ansible.posix.firewalld:
@@ -192,6 +204,7 @@
         immediate: true
         state: enabled
       when: ansible_facts.services["firewalld.service"] is defined
+            and ansible_facts.services["firewalld.service"].state == "running"
 
   handlers:
     - name: Reload HAProxy

@@ -8,14 +8,30 @@
 
   tasks:
 
+    # ======================================================
+    # Check whether the pod is already running so we can
+    # skip kube play on subsequent runs (idempotency).
+    # rc != 0 means the pod does not exist yet.
+    # ======================================================
+
+    - name: Check if TFE pod is already running
+      ansible.builtin.command:
+        cmd: podman pod inspect tfe-pod
+      register: pod_inspect
+      changed_when: false
+      failed_when: false
+
     - name: Start Terraform Enterprise
       ansible.builtin.command:
         cmd: podman kube play {{ tfe_install_dir }}/tfe-pod.yml
       register: kube_play
+      when: pod_inspect.rc != 0
+      changed_when: pod_inspect.rc != 0
 
     - name: Display startup output
       ansible.builtin.debug:
         var: kube_play.stdout_lines
+      when: pod_inspect.rc != 0
 
     # ======================================================
     # Fail fast: confirm the container is actually running
