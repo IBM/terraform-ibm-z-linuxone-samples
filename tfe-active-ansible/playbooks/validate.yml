@@ -1,0 +1,140 @@
+---
+- name: TFE - Validate
+  hosts: tfe
+  become: true
+
+  vars_files:
+    - ../vars/secrets.yml
+
+  tasks:
+
+    # ======================================================
+    # Containers
+    # ======================================================
+
+    - name: Get running containers
+      ansible.builtin.command:
+        cmd: podman ps
+      register: containers
+      changed_when: false
+
+    - name: Display containers
+      ansible.builtin.debug:
+        var: containers.stdout_lines
+
+    # ======================================================
+    # TFE readiness
+    # ======================================================
+
+    - name: Run TFE readiness check
+      ansible.builtin.command:
+        cmd: >
+          podman exec {{ tfe_container_name }}
+          tfectl app health readiness
+      register: readiness
+      changed_when: false
+
+    - name: Verify TFE readiness
+      ansible.builtin.assert:
+        that:
+          - readiness.rc == 0
+        fail_msg: |
+          TFE readiness check failed.
+
+          STDOUT:
+          {{ readiness.stdout }}
+
+          STDERR:
+          {{ readiness.stderr }}
+
+    # ======================================================
+    # PostgreSQL
+    # ======================================================
+
+    - name: Verify PostgreSQL connectivity
+      ansible.builtin.wait_for:
+        host: "{{ postgres_host }}"
+        port: "{{ postgres_port }}"
+        timeout: 10
+
+    # ======================================================
+    # Redis
+    # ======================================================
+
+    - name: Verify Redis connectivity
+      ansible.builtin.wait_for:
+        host: "{{ redis_host }}"
+        port: "{{ redis_port }}"
+        timeout: 10
+
+    # ======================================================
+    # MinIO
+    # ======================================================
+
+    - name: Verify MinIO connectivity
+      ansible.builtin.wait_for:
+        host: "{{ minio_host }}"
+        port: "{{ minio_port }}"
+        timeout: 10
+
+    # ======================================================
+    # HTTPS — two checks:
+    # 1. Direct to TFE container (confirms TFE is serving)
+    # 2. Through HAProxy on 443 (confirms full network path)
+    # ======================================================
+
+    - name: Check TFE HTTPS endpoint (direct)
+      ansible.builtin.uri:
+        url: "https://127.0.0.1:{{ tfe_https_host_port }}/api/v1/health/readiness"
+        validate_certs: false
+        status_code: 200
+      register: https_direct
+      retries: 2
+      delay: 10
+      until: https_direct.status == 200
+
+    - name: Check TFE HTTPS endpoint (via HAProxy)
+      ansible.builtin.uri:
+        url: "https://{{ tfe_hostname }}/api/v1/health/readiness"
+        validate_certs: false
+        status_code: 200
+      register: https_haproxy
+      retries: 2
+      delay: 10
+      until: https_haproxy.status == 200
+
+    # ======================================================
+    # Image architecture
+    # ======================================================
+
+    - name: Verify running image architecture
+      ansible.builtin.command:
+        cmd: >
+          podman image inspect {{ tfe_image }}
+          --format '{{ '{{.Architecture}}/{{.Os}}' }}'
+      register: running_image_arch
+      changed_when: false
+
+    - name: Verify s390x image
+      ansible.builtin.assert:
+        that:
+          - running_image_arch.stdout == "s390x/linux"
+
+    # ======================================================
+    # Final
+    # ======================================================
+
+    - name: Validation successful
+      ansible.builtin.debug:
+        msg:
+          - "=============================================="
+          - "TERRAFORM ENTERPRISE VALIDATION SUCCESSFUL"
+          - "=============================================="
+          - "Architecture : {{ running_image_arch.stdout }}"
+          - "TFE Hostname : {{ tfe_hostname }}"
+          - "PostgreSQL   : OK"
+          - "Redis        : OK"
+          - "MinIO        : OK"
+          - "HTTPS        : OK"
+          - "Readiness    : OK"
+          - "=============================================="

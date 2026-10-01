@@ -1,0 +1,116 @@
+---
+# ==========================================================
+# Terraform Enterprise
+# ==========================================================
+
+tfe_version: "2.0.5"
+
+tfe_hostname: "{{ ansible_host }}"
+
+tfe_operational_mode: "active-active"
+
+tfe_install_dir: "/opt/terraform-enterprise"
+
+# ==========================================================
+# Local TFE image
+# ==========================================================
+
+tfe_image_file: "/tmp/terraform-for-z-2-0-5"
+
+# This is the stable local tag we will create after podman load.
+tfe_image: "localhost/terraform-enterprise:2.0.5-s390x"
+
+# ==========================================================
+# Podman Container details
+# ==========================================================
+###tfe_container_identifier: tfe
+tfe_container_name: terraform-enterprise-tfe
+tfe_container_identifier: tfe
+
+# ==========================================================
+# External services - x86 VM
+# ==========================================================
+
+external_services_host: "{{ lookup('env', 'SERVICE_ANSIBLE_HOST') }}"
+
+# PostgreSQL
+postgres_host: "{{ external_services_host }}"
+postgres_port: 5432
+postgres_database: "tfe"
+postgres_username: "tfe"
+postgres_parameters: "sslmode=disable"
+
+# Redis
+redis_host: "{{ external_services_host }}"
+redis_port: 6379
+redis_use_auth: true
+redis_use_tls: false
+
+# MinIO
+minio_host: "{{ external_services_host }}"
+minio_port: 9000
+
+minio_endpoint: "http://{{ minio_host }}:{{ minio_port }}"
+
+minio_bucket: "terraform-enterprise"
+
+minio_region: "us-east-1"
+
+# ==========================================================
+# TFE ports
+# ==========================================================
+
+# Container-internal ports (what TFE listens on inside the container)
+tfe_http_port: 8080
+tfe_https_port: 8443
+tfe_vault_port: 8201
+
+# Host-side port bindings (what HAProxy forwards to)
+# These must differ from 80/443 which HAProxy already owns
+tfe_http_host_port: 8080
+tfe_https_host_port: 8443
+
+# ===============================================================
+# TFE binding address, # change to "0.0.0.0" if HAProxy is remote
+# ===============================================================
+tfe_bind_address: "127.0.0.1"
+
+# ==========================================================
+# TLS
+# ==========================================================
+
+tfe_tls_cert_file: "/etc/ssl/private/terraform-enterprise/cert.pem"
+
+tfe_tls_key_file: "/etc/ssl/private/terraform-enterprise/key.pem"
+
+tfe_tls_ca_bundle_file: "/etc/ssl/private/terraform-enterprise/bundle.pem"
+
+# ==========================================================
+# Vault
+# ==========================================================
+
+# Vault cluster address: TFE uses this to tell Vault what address to bind
+# and advertise for its cluster port. Must use the external hostname so Vault
+# binds on the container's network interface (not loopback), which is
+# required for TFE's internal readiness check to reach port 8201.
+tfe_vault_cluster_address: "https://{{ ansible_host }}:8201"
+
+# Bind Vault's cluster port to loopback only.
+# Change to "0.0.0.0" only when a second TFE node (active-active) is added
+# and needs to reach this node's Vault over the network.
+tfe_vault_bind_address: "0.0.0.0"
+
+# ==========================================================
+# Terraform execution
+# ==========================================================
+
+tfe_run_pipeline_driver: "docker"
+
+tfe_disk_cache_path: "/var/cache/tfe-task-worker"
+
+# Short name used in compose volumes: declaration (compose prepends project name automatically)
+# Full name = terraform-enterprise_<short> = what TFE_DISK_CACHE_VOLUME_NAME must be set to
+tfe_disk_cache_volume_name_short: "terraform-enterprise-cache"
+
+tfe_disk_cache_volume_name: "terraform-enterprise_terraform-enterprise-cache"
+

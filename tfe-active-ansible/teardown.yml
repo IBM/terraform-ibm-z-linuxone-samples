@@ -1,0 +1,183 @@
+---
+- name: TFE - Teardown
+  hosts: tfe
+  become: true
+
+  vars_files:
+    - ../vars/secrets.yml
+
+  tasks:
+
+    # ======================================================
+    # Wipe Vault PostgreSQL storage so next deploy bootstraps clean.
+    # TFE app data lives in the terraform_enterprise schema — unaffected.
+    # This must run BEFORE the container is stopped so we can reach postgres.
+    # ======================================================
+
+    - name: Wipe Vault storage in PostgreSQL
+      ansible.builtin.shell:
+        cmd: >
+          podman run --rm --network=host
+          {{ tfe_image }}
+          sh -c 'psql "postgres://{{ postgres_username }}:{{ postgres_password }}@{{ postgres_host }}:{{ postgres_port }}/{{ postgres_database }}?sslmode=disable"
+          -c "SET search_path=vault; TRUNCATE vault_kv_store; TRUNCATE vault_ha_locks;"'
+      changed_when: true
+      ignore_errors: true
+
+    # ======================================================
+    # Stop and remove TFE container + volumes
+    # ======================================================
+
+    - name: Stop and remove TFE via podman kube
+      ansible.builtin.command:
+        cmd: >
+          podman kube down
+          {{ tfe_install_dir }}/tfe-pod.yml
+      register: kube_down
+      failed_when: kube_down.rc != 0
+      changed_when: kube_down.rc == 0
+      ignore_errors: true
+
+    - name: Force-remove TFE container if still present
+      containers.podman.podman_container:
+        name: "{{ tfe_container_name }}"
+        state: absent
+        force_delete: true
+      ignore_errors: true
+
+    - name: Remove TFE task-worker cache volume
+      ansible.builtin.command:
+        cmd: podman volume rm {{ tfe_disk_cache_volume_name }}
+      changed_when: true
+      ignore_errors: true
+
+    - name: Remove TFE image
+      containers.podman.podman_image:
+        name: "{{ tfe_image }}"
+        state: absent
+      ignore_errors: true
+
+    # ======================================================
+    # Firewall — close ports opened by prepare.yml
+    # ======================================================
+
+    - name: Close TFE HTTP port
+      ansible.posix.firewalld:
+        port: "{{ tfe_http_port }}/tcp"
+        permanent: true
+        immediate: true
+        state: disabled
+      when: ansible_facts.services["firewalld.service"] is defined
+      ignore_errors: true
+
+    - name: Close TFE HTTPS port
+      ansible.posix.firewalld:
+        port: "{{ tfe_https_port }}/tcp"
+        permanent: true
+        immediate: true
+        state: disabled
+      when: ansible_facts.services["firewalld.service"] is defined
+      ignore_errors: true
+
+    - name: Close TFE Vault cluster port
+      ansible.posix.firewalld:
+        port: "{{ tfe_vault_port }}/tcp"
+        permanent: true
+        immediate: true
+        state: disabled
+      when: ansible_facts.services["firewalld.service"] is defined
+      ignore_errors: true
+
+    # ======================================================
+    # Podman socket
+    # ======================================================
+
+    - name: Stop and disable Podman socket
+      ansible.builtin.systemd:
+        name: podman.socket
+        enabled: false
+        state: stopped
+      ignore_errors: true
+
+    # ======================================================
+    # HAProxy and rsyslog logging cleanup
+    # ======================================================
+
+    - name: Remove HAProxy rsyslog configuration
+      ansible.builtin.file:
+        path: /etc/rsyslog.d/haproxy.conf
+        state: absent
+      notify: Restart rsyslog
+
+    - name: Remove HAProxy log file
+      ansible.builtin.file:
+        path: /var/log/haproxy.log
+        state: absent
+
+    - name: Remove HAProxy configuration
+      ansible.builtin.file:
+        path: /etc/haproxy/haproxy.cfg
+        state: absent
+      ignore_errors: true
+
+    # ======================================================
+    # Remove installation directories
+    # ======================================================
+
+    - name: Remove TFE installation directory
+      ansible.builtin.file:
+        path: "{{ tfe_install_dir }}"
+        state: absent
+
+    - name: Remove TFE cache directory
+      ansible.builtin.file:
+        path: "{{ tfe_disk_cache_path }}"
+        state: absent
+
+    # ======================================================
+    # Uninstall packages installed by prepare.yml
+    # ======================================================
+
+    - name: Uninstall podman and related packages
+      ansible.builtin.dnf:
+        name:
+          - podman
+        state: absent
+        autoremove: true
+
+    - name: Confirm podman is removed
+      ansible.builtin.command:
+        cmd: podman --version
+      register: podman_check
+      failed_when: podman_check.rc == 0
+      changed_when: false
+      ignore_errors: true
+
+    - name: Display teardown complete
+      ansible.builtin.debug:
+        msg:
+          - "=============================================="
+          - "TFE TEARDOWN COMPLETE"
+          - "=============================================="
+          - "Container removed  : {{ tfe_container_name }}"
+          - "Image removed      : {{ tfe_image }}"
+          - "Volume removed     : {{ tfe_disk_cache_volume_name }}"
+          - "Install dir removed: {{ tfe_install_dir }}"
+          - "Cache dir removed  : {{ tfe_disk_cache_path }}"
+          - "Vault storage wiped: {{ postgres_host }}:{{ postgres_port }}/{{ postgres_database }} (vault schema)"
+          - "HAProxy config removed : /etc/haproxy/haproxy.cfg"
+          - "HAProxy log removed    : /var/log/haproxy.log"
+          - "rsyslog config removed : /etc/rsyslog.d/haproxy.conf"
+          - "Uninstalled        : podman"
+          - "Ports closed       : {{ tfe_http_port }}, {{ tfe_https_port }}, {{ tfe_vault_port }}, 80, 443"
+          - "Podman socket      : disabled"
+          - "=============================================="
+          - "Next step: run ansible-playbook site.yml to redeploy TFE"
+          - "=============================================="
+
+  handlers:
+    - name: Restart rsyslog
+      ansible.builtin.systemd:
+        name: rsyslog
+        state: restarted
+      ignore_errors: true
