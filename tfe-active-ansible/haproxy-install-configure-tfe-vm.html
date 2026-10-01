@@ -132,7 +132,7 @@
 
   <h1>HAProxy — Install &amp; Configure</h1>
   <div class="subtitle">
-    Target host: <code>tfe-s390x.dev.fyre.ibm.com</code>  · 
+    Target host: <code>host-domain-name</code>  · 
     Architecture: <code>s390x (IBM Z)</code>  · 
     Purpose: Load balancer for Terraform Enterprise (active-active)
   </div>
@@ -258,7 +258,7 @@ backend tfe_nodes
 
 #---------------------------------------------------------------------
 # HAProxy stats page
-# Access: http://tfe-s390x.dev.fyre.ibm.com:8404/stats
+# Access: http://host-domain-name:8404/stats
 #---------------------------------------------------------------------
 listen stats
     bind *:8404
@@ -323,17 +323,17 @@ firewall-cmd --list-services</pre>
       </tr>
       <tr>
         <td>Stats page (remote)</td>
-        <td><code>curl http://tfe-s390x.dev.fyre.ibm.com:8404/stats</code></td>
+        <td><code>curl http://host-domain-name:8404/stats</code></td>
         <td>HTML stats page returned</td>
       </tr>
       <tr>
         <td>HTTPS via HAProxy</td>
-        <td><code>curl -vk https://tfe-s390x.dev.fyre.ibm.com/</code></td>
+        <td><code>curl -vk https://host-domain-name/</code></td>
         <td>TFE login page or 200/302 response</td>
       </tr>
       <tr>
         <td>HTTP redirect</td>
-        <td><code>curl -v http://tfe-s390x.dev.fyre.ibm.com/</code></td>
+        <td><code>curl -v http://host-domain-name/</code></td>
         <td><code>301 Moved Permanently</code> → HTTPS</td>
       </tr>
       <tr>
@@ -349,7 +349,7 @@ firewall-cmd --list-services</pre>
 tail -f /var/log/haproxy.log
 
 # Terminal 2 — send a request
-curl -vk https://tfe-s390x.dev.fyre.ibm.com/</pre>
+curl -vk https://host-domain-name/</pre>
 
   <hr class="divider" />
 
